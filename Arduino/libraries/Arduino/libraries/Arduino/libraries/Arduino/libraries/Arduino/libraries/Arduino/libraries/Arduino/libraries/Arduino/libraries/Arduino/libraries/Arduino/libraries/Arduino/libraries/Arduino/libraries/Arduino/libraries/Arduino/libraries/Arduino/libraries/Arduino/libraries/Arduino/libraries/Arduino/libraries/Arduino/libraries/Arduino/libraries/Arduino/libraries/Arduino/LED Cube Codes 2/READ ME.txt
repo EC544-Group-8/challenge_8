@@ -1,0 +1,27 @@
+LED Cube Programing Guide
+By: Tyler Manders
+6/10/13
+
+Note: in order for some things in this document to line up, make sure you maximize the window.
+
+This Guide is based upon programing a 4x4x4 LED Cube. It can be scaled up and down. Message me if you would like to know how.
+
+
+The instructions on the cube construction can be found here:
+http://www.instructables.com/id/4x4x4-LED-Cube-Arduino/
+
+
+Detailed instructions on how to write your own Program can be found here:
+
+
+
+Other Files:
+
+	LED_1cube_4x4x4_Blank_Show_  This is a blank sheet to use to write your own program under.
+
+	LED_1cube_4x4x4_Show_1   This is a program someone else wrote, i dont remember 	where i got it, however if you would like to recive credit, message me. Also 		this is the source of the blank one and show two.
+
+	LED_1cube_4x4x4_Show_2	 This is the program i wrote myself after figuring out 	how. 
+
+	4x4x4 LED Grid   This comes in handy trying to plan complex animations
+
