@@ -1,0 +1,9 @@
+body {
+    background-image: url("/images/four.png");
+    background-repeat: no-repeat;
+    background-size: 1200px 1300px;
+    background-attachment: fixed;
+    background-position: center; 
+    line-height: "500px";
+
+}
