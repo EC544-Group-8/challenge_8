@@ -20,13 +20,13 @@ Create a system that drives your vehicle through an indoor course without operat
 - [ ] 4 Arduinos w/Xbees  : Indoor Localization 
 - [ ] 1 Arduino w/XBee    : Vehicle control and sampled RSSI vector
 - [ ] 1 RPI w/XBee        : Receive and stor data in SQL and host webpage ???
-- [ ] Off=Network PC      : Demonstrate the system
+- [ ] Off-Network PC      : Demonstrate the system
 - [ ] 1 Webcam            : FPV streaming and control from the UI
 
 ### To-Do
 - [ ]
 - [ ]
 
-### Idea
+### Ideas
 - If we can connect the XBee to a photon then we may have better luck transmitting the data in the space using multiple routers instead of one PAN direct line of communication network.
 - We may also want to try and setup trip sensors using IR LEDs at each corner which would trigger the vehicle to turn using IR detectors on the vehicle 
