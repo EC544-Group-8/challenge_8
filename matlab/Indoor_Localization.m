@@ -1,8 +1,6 @@
 % Indoor tracking script
 
 % Generate the path to the file
-%addpath(genpath('/Users/connormccann/Documents/BU/Fall_2016/EC544/EC544_demos/challenge_6/database'))
-%addpath(genpath('../database'))
 
 format shortg
 
@@ -70,13 +68,13 @@ disp(our_position)
 toc
 
 
+smallerTable = avgDB(1:2:end,:);
+DB_Array = table2array(smallerTable);
 
 
-
-
-
-
-
+%=============================================
+%           Non-Vectorized KNN Code
+%=============================================
 % knn through the RAW database
 %{
 tic

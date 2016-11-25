@@ -1,0 +1,3 @@
+% Test script to run Knn in Octave
+load('model.mat');
+our_position = predict(Mdl,sample);
