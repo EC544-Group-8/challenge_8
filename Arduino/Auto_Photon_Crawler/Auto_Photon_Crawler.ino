@@ -14,6 +14,9 @@
 #define LIDAR_CALIBRATE_DIFFERENCE 0 //8
 #define DEBUG 0 // 1 for debug mode, 0 for no, debug will disable motor and ultrasonic blocking
 #define TRANSMIT_DELAY 20
+#define MAX_WALL_DISTANCE 140
+#define MIN_WALL_DISTANCE 10
+
 
 bool startup = true; // used to ensure startup only happens once
 int startupDelay = 1000; // time to pause at each calibration step
@@ -61,15 +64,22 @@ double posError;
 PID steeringPID(&deltaD, &steeringOut, &setPos,
                 sKp, sKi,sKd,DIRECT);
                 
-double distOfWall;
+double distOfLeftWall;
 double driftOut;
 double driftSetPos = 100; // upstairs
 // double driftSetPos = 70; // UAV LAB
 
+double distOfRightWall;
+int safeToTurn = 0;
+int gapToLeft = 0;
+
 // 0.7 0 0 
 // 0.7 0 0.04
 double dKp = 0.7,dKi= 0.0,dKd = 0.04;
-PID driftPID(&distOfWall, &driftOut, & driftSetPos,
+PID driftPID(&distOfLeftWall, &driftOut, & driftSetPos,
+              dKp,dKi,dKd,DIRECT);
+
+PID driftRightPID(&distOfRightWall, &driftOut, & driftSetPos,
               dKp,dKi,dKd,DIRECT);
 
 
@@ -122,10 +132,24 @@ void loop()
       calcSonar();
       String dist = String(inches);
       Serial.println("SONAR: " + dist);
+
+      // Check the right wall
+      //calcIR();
+
+      // Calculate the left wall
       calcLidar();
-      steeringPIDloop();
-      driftPIDloop();
+      if(gapToLeft == 1) {
+        driftRightPIDloop();
+      } else {
+        driftPIDloop();
+        steeringPIDloop();
+      }
       wheels_write_value = 90+(steeringOut - driftOut)/2;
+
+      // Too close to right wall, with room on the left
+      if(distOfRightWall < 20 && distOfLeftWall > 20) {
+        wheels_write_value = 65;
+      }
       
       // Turning LEDs
       if(wheels_write_value < 90){
@@ -173,6 +197,13 @@ void driftPIDloop(void)
   //wheels.write(90+steeringOut); 
 }
 
+void driftRightPIDloop(void)
+{
+  driftRightPID.SetTunings(dKp,dKi,dKd);
+  driftRightPID.Compute();
+  //wheels.write(90+steeringOut); 
+}
+
 // Convert degree value to radians 
 double degToRad(double degrees){
   return (degrees * 71) / 4068;
@@ -202,7 +233,7 @@ void calcSonar(void)
     sum += anVolt;
     delay(10);
   }
-  inches = (sum / avgRange);    // Manal calibration 
+  inches = (sum / avgRange);    // Manual calibration 
   sum = 0;
 }
 
@@ -237,10 +268,15 @@ void calcLidar(void)
             lidar_dist_front = lidar_dist_front << 8; // shift high byte to be high 8 bits
             lidar_dist_front |= Wire.read(); // receive low byte as lower 8 bits
             lidar_dist_front += LIDAR_CALIBRATE_DIFFERENCE;
-            if(lidar_dist_front > 140 || lidar_dist_front < 10)
+            // Dead reckon if sensor values are very high and not at turning point (gap) or noise
+            if( (lidar_dist_front > MAX_WALL_DISTANCE && safeToTurn == 0) || lidar_dist_front < 10 )
             {
-                lidar_dist_front = last_lidar_dist_front;
-            }
+              gapToLeft = 1;
+              Serial.println("DEAD RECKON FRONT");
+              lidar_dist_front = last_lidar_dist_front;
+            } else {
+              gapToLeft = 0;
+            } 
             
             last_lidar_dist_front = lidar_dist_front;
             // lidar_dist_front_avg += lidar_dist_front;
@@ -275,10 +311,16 @@ void calcLidar(void)
             lidar_dist_back = Wire.read(); // receive high byte (overwrites previous reading)
             lidar_dist_back = lidar_dist_back << 8; // shift high byte to be high 8 bits
             lidar_dist_back |= Wire.read(); // receive low byte as lower 8 bits
-            if(lidar_dist_back > 140 || lidar_dist_back < 10)
+            // Dead reckon if sensor values are very high and not at turning point (gap) or noise
+            if( (lidar_dist_back > MAX_WALL_DISTANCE && safeToTurn == 0) || lidar_dist_back < 10 )
             {
-                lidar_dist_back = last_lidar_dist_back;
-            }
+              gapToLeft = 1;
+              Serial.println("DEAD RECKON BACK");
+              lidar_dist_back = last_lidar_dist_back;
+            } else {
+              gapToLeft = 0;
+            } 
+
             
             last_lidar_dist_back = lidar_dist_back;
             // lidar_dist_back_avg += lidar_dist_back;
@@ -296,14 +338,14 @@ void calcLidar(void)
   deltaD = lidar_dist_back - lidar_dist_front;
   if(deltaD > 0)
   {
-      distOfWall = lidar_dist_front;
+      distOfLeftWall = lidar_dist_front;
   }
   else
   {
-      distOfWall = lidar_dist_back;
+      distOfLeftWall = lidar_dist_back;
   }
 //   deltaD -= LIDAR_CALIBRATE_DIFFERENCE;
-  //distOfWall = (lidar_dist_back + lidar_dist_front)/2;
+  //distOfLeftWall = (lidar_dist_back + lidar_dist_front)/2;
    Serial.println("DELTA: " + String(deltaD));
   // Print serial deltaD here 
     // }
