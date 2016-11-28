@@ -10,10 +10,9 @@
 //================================================
 //                     Globals
 //================================================ 
-#define MIN_SONAR_VALUE 40 // 5ft original
+#define MIN_SONAR_VALUE 30 // 5ft original
 #define LIDAR_CALIBRATE_DIFFERENCE 0 //8
 #define DEBUG 0 // 1 for debug mode, 0 for no, debug will disable motor and ultrasonic blocking
-#define DEBUG_CLOUD 0 // Debug cloud 1 will publish to particle cloud
 #define TRANSMIT_DELAY 20
 
 bool startup = true; // used to ensure startup only happens once
@@ -22,6 +21,8 @@ double maxSpeedOffset = 45; // maximum speed magnitude, in servo 'degrees'
 double maxWheelOffset = 85; // maximum wheel turn magnitude, in servo 'degrees'
 int left_led = 6;//----------------------------------------------------------------------------
 int right_led = 7;//----------------------------------------------------------------------------------
+int back_LDR_pin = 4;
+int front_LDR_pin = 13;
 
 // Lidar Lite V1
 #define     LIDARLite_ADDRESS   0x62        // Default I2C Address of LIDAR-Lite.
@@ -40,10 +41,10 @@ int new_motion(String new_id); // Need forward declaration for use in "setup" lo
 String motion_id = "0";
 
 // Max Sonar Sensor
-const int sonarPin = 0; // used with the max sonar sensor
+const int sonarPin = A0; // used with the max sonar sensor
 long anVolt, inches, cm;
 int sum = 0; 
-int avgRange = 12;
+int avgRange = 10;
 
 // Servo instances for controlling the vehicle
 Servo wheels;
@@ -94,8 +95,8 @@ void setup()
 
   // LIDAR
   Wire.begin();
-  pinMode(4,OUTPUT);
-  pinMode(5,OUTPUT);
+  pinMode(back_LDR_pin,OUTPUT);
+  pinMode(front_LDR_pin,OUTPUT);
 
   // Ultrasonic Collision
   
@@ -116,7 +117,7 @@ void loop()
 {
   calcSonar();
   Serial.println("Inches: " + String(inches));
-  while((inches > MIN_SONAR_VALUE || DEBUG) && motion_id == "1")
+  while((inches > MIN_SONAR_VALUE || DEBUG)) // && motion_id == "1"
   {
       calcSonar();
       String dist = String(inches);
@@ -139,14 +140,15 @@ void loop()
       wheels.write(wheels_write_value);
       //avg outputs and write them to the servo
       if(!DEBUG)
-        esc.write(60); // originally 60 as the prime value
+        esc.write(80); // originally 60 as the prime value
       Serial.println("Steeringout: " + String(steeringOut));
       Serial.println("Driftout: " + String(driftOut));
+
+      //delay(1000);//--------------------------------------------------------------
   }
   //delay(10);
   wheels.write(wheels_write_value);
   esc.write(90); 
-
 }
 
 //================================================
@@ -196,9 +198,9 @@ void calcSonar(void)
 {
   for(int i = 0; i < avgRange; i++)
   {
-    anVolt = analogRead(sonarPin) / 8;
+    anVolt = analogRead(sonarPin) / 2; // originally /8 ----------------------------------------
     sum += anVolt;
-    delay(2);
+    delay(10);
   }
   inches = (sum / avgRange);    // Manal calibration 
   sum = 0;
@@ -211,8 +213,8 @@ void calcLidar(void)
     // int n_samples = 3;
     // for(int i = 0; i < n_samples; i++){
         // ---------  THIS IS FOR THE FRONT LIDAR  -------------
-        digitalWrite(5,LOW);
-        digitalWrite(4,HIGH);
+        digitalWrite(back_LDR_pin,LOW);
+        digitalWrite(front_LDR_pin,HIGH);
         delay(5);
         Wire.beginTransmission((int)LIDARLite_ADDRESS); // transmit to LIDAR-Lite
         Wire.write((int)RegisterMeasure); // sets register pointer to  (0x00)  
@@ -250,8 +252,8 @@ void calcLidar(void)
         // ---------  END FRONT LIDAR  -------------
         
         // ---------  THIS IS FOR THE BACK LIDAR  -------------
-        digitalWrite(4,LOW);
-        digitalWrite(5,HIGH);
+        digitalWrite(back_LDR_pin,HIGH);
+        digitalWrite(front_LDR_pin,LOW);
         delay(5);
         Wire.beginTransmission((int)LIDARLite_ADDRESS); // transmit to LIDAR-Lite
         Wire.write((int)RegisterMeasure); // sets register pointer to  (0x00)  
