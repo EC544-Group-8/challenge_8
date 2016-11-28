@@ -16,6 +16,7 @@
 #define TRANSMIT_DELAY 20
 #define MAX_WALL_DISTANCE 140
 #define MIN_WALL_DISTANCE 10
+#define IRpin A1
 
 
 bool startup = true; // used to ensure startup only happens once
@@ -47,7 +48,7 @@ String motion_id = "0";
 const int sonarPin = A0; // used with the max sonar sensor
 long anVolt, inches, cm;
 int sum = 0; 
-int avgRange = 10;
+int avgRange = 20;
 
 // Servo instances for controlling the vehicle
 Servo wheels;
@@ -134,7 +135,7 @@ void loop()
       Serial.println("SONAR: " + dist);
 
       // Check the right wall
-      //calcIR();
+      calcIR();
 
       // Calculate the left wall
       calcLidar();
@@ -168,7 +169,9 @@ void loop()
       Serial.println("Steeringout: " + String(steeringOut));
       Serial.println("Driftout: " + String(driftOut));
 
-      //delay(1000);//--------------------------------------------------------------
+      if (DEBUG) {
+        delay(1000);
+      }
   }
   //delay(10);
   wheels.write(wheels_write_value);
@@ -235,6 +238,12 @@ void calcSonar(void)
   }
   inches = (sum / avgRange);    // Manual calibration 
   sum = 0;
+}
+
+void calcIR() {
+  float volts = analogRead(IRpin)*0.0048828125; ;
+  distOfRightWall = 65*pow(volts, -1.10);
+    Serial.println("Right wall: " + String(distOfRightWall));
 }
 
 
