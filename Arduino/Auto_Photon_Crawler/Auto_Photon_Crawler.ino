@@ -10,12 +10,11 @@
 //================================================
 //                     Globals
 //================================================ 
-#define MIN_SONAR_VALUE 30 // 5ft original
+#define MIN_FRONT_IR_VALUE 50 // 5ft original
 #define LIDAR_CALIBRATE_DIFFERENCE 0 //8
 #define DEBUG 0 // 1 for debug mode, 0 for no, debug will disable motor and ultrasonic blocking
 #define TRANSMIT_DELAY 20
 #define MAX_WALL_DISTANCE 140
-#define MIN_WALL_DISTANCE 10
 #define IRpin A1
 
 
@@ -44,8 +43,8 @@ double deltaD = 0;
 int new_motion(String new_id); // Need forward declaration for use in "setup" loop (note, must take a string, return an int to work)
 String motion_id = "0";
 
-// Max Sonar Sensor
-const int sonarPin = A0; // used with the max sonar sensor
+// Max FrontIR Sensor
+const int frontIRPin = A0; // used with the max frontIR sensor
 long anVolt, inches, cm;
 int sum = 0; 
 int avgRange = 20;
@@ -126,16 +125,16 @@ void setup()
 //================================================
 void loop()
 {
-  calcSonar();
+  calcFrontIR();
   Serial.println("Inches: " + String(inches));
-  while((inches > MIN_SONAR_VALUE || DEBUG)) // && motion_id == "1"
+  while((inches > MIN_FRONT_IR_VALUE || DEBUG)) // && motion_id == "1"
   {
-      calcSonar();
+      calcFrontIR();
       String dist = String(inches);
-      Serial.println("SONAR: " + dist);
+      Serial.println("FRONT_IR: " + dist);
 
       // Check the right wall
-      calcIR();
+      calcRightIR();
 
       // Calculate the left wall
       calcLidar();
@@ -228,22 +227,16 @@ void calibrateESC(){
     esc.write(90); // reset the ESC to neutral (non-moving) value
 }
 
-void calcSonar(void)
+void calcFrontIR(void)
 {
-  for(int i = 0; i < avgRange; i++)
-  {
-    anVolt = analogRead(sonarPin) / 2; // originally /8 ----------------------------------------
-    sum += anVolt;
-    delay(10);
-  }
-  inches = (sum / avgRange);    // Manual calibration 
-  sum = 0;
+  float volts = analogRead(frontIRPin)*0.0048828125; ;
+  inches = 65*pow(volts, -1.10);  
 }
 
-void calcIR() {
+void calcRightIR() {
   float volts = analogRead(IRpin)*0.0048828125; ;
   distOfRightWall = 65*pow(volts, -1.10);
-    Serial.println("Right wall: " + String(distOfRightWall));
+  Serial.println("Right wall: " + String(distOfRightWall));
 }
 
 
