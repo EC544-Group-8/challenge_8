@@ -147,7 +147,10 @@ void loop()
       wheels_write_value = 90+(steeringOut - driftOut)/2;
 
       // Too close to right wall, with room on the left
+      Serial.println("- Right wall: " + String(distOfRightWall));
+      Serial.println("- Left wall: " + String(distOfLeftWall));
       if(distOfRightWall < 20 && distOfLeftWall > 20) {
+        Serial.println("WALLLLLLLLL!!! ");
         wheels_write_value = 65;
       }
       
