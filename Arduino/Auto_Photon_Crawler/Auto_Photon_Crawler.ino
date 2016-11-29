@@ -2,6 +2,7 @@
 // Sensors: LIDAR, Ultrasonic Range
 // Control: PID
 // Actuation: Servos
+
 #include <PID_v1.h>
 #include <Servo.h>
 #include "math.h"
@@ -17,13 +18,14 @@
 #define MAX_WALL_DISTANCE 140
 #define IRpin A1
 
-
-bool startup = true; // used to ensure startup only happens once
-int startupDelay = 1000; // time to pause at each calibration step
+bool startup = true;        // used to ensure startup only happens once
+int startupDelay = 1000;    // time to pause at each calibration step
 double maxSpeedOffset = 45; // maximum speed magnitude, in servo 'degrees'
 double maxWheelOffset = 85; // maximum wheel turn magnitude, in servo 'degrees'
-int left_led = 6;//----------------------------------------------------------------------------
-int right_led = 7;//----------------------------------------------------------------------------------
+
+// Pins
+int left_led = 6;
+int right_led = 7;
 int back_LDR_pin = 4;
 int front_LDR_pin = 13;
 
@@ -57,8 +59,8 @@ int wheels_write_value = 80;
 // PID variables
 double steeringOut = 0;
 double setPos = 0;
-// 2 0 0
-//2 0 .04
+// 2 0 0  (Saved values for different speeds)
+// 2 0 .04
 double sKp = 2.2, sKi = 0.0, sKd = .05;
 double posError;
 PID steeringPID(&deltaD, &steeringOut, &setPos,
@@ -66,14 +68,14 @@ PID steeringPID(&deltaD, &steeringOut, &setPos,
                 
 double distOfLeftWall;
 double driftOut;
-double driftSetPos = 100; // upstairs
+double driftSetPos = 100;   // upstairs
 // double driftSetPos = 70; // UAV LAB
 
 double distOfRightWall;
 int safeToTurn = 0;
 int gapToLeft = 0;
 
-// 0.7 0 0 
+// 0.7 0 0      (Saved Values for different speeds)
 // 0.7 0 0.04
 double dKp = 0.7,dKi= 0.0,dKd = 0.04;
 PID driftPID(&distOfLeftWall, &driftOut, & driftSetPos,
@@ -188,44 +190,41 @@ void loop()
 //================================================
 //                  Functions
 //================================================
-int new_motion(String new_id){
+int new_motion(String new_id) {
   motion_id = new_id;
   return 1;
 }
 
-void steeringPIDloop(void)
-{
+void steeringPIDloop(void) {
   steeringPID.SetTunings(sKp,sKi,sKd);
   steeringPID.Compute();
   //wheels.write(90+steeringOut);
 }
 
-void driftPIDloop(void)
-{
+void driftPIDloop(void) {
   driftPID.SetTunings(dKp,dKi,dKd);
   driftPID.Compute();
   //wheels.write(90+steeringOut); 
 }
 
-void driftRightPIDloop(void)
-{
+void driftRightPIDloop(void) {
   driftRightPID.SetTunings(dKp,dKi,dKd);
   driftRightPID.Compute();
   //wheels.write(90+steeringOut); 
 }
 
 // Convert degree value to radians 
-double degToRad(double degrees){
+double degToRad(double degrees) {
   return (degrees * 71) / 4068;
-}
+ }
 
 // Convert radian value to degrees 
-double radToDeg(double radians){
+double radToDeg(double radians) {
   return (radians * 4068) / 71;
 }
 
 //Calibrate the ESC by sending a high signal, then a low, then middle
-void calibrateESC(){
+void calibrateESC() {
     esc.write(180); // full backwards
     delay(startupDelay);
     esc.write(0); // full forwards
@@ -235,8 +234,7 @@ void calibrateESC(){
     esc.write(90); // reset the ESC to neutral (non-moving) value
 }
 
-void calcFrontIR(void)
-{
+void calcFrontIR(void) {
   float volts = analogRead(frontIRPin)*0.0048828125; ;
   inches = 65*pow(volts, -1.10);  
 }
@@ -247,9 +245,7 @@ void calcRightIR() {
   Serial.println("Right wall: " + String(distOfRightWall));
 }
 
-
-void calcLidar(void)
-{
+void calcLidar(void) {
     // int lidar_dist_back_avg, lidar_dist_front_avg = 0;
     // int n_samples = 3;
     // for(int i = 0; i < n_samples; i++){
@@ -272,15 +268,13 @@ void calcLidar(void)
     
         Wire.requestFrom((int)LIDARLite_ADDRESS, 2); // request 2 bytes from LIDAR-Lite
     
-        if(2 <= Wire.available()) // if two bytes were received
-        {
+        if(2 <= Wire.available()) { // if two bytes were received
             lidar_dist_front = Wire.read(); // receive high byte (overwrites previous reading)
             lidar_dist_front = lidar_dist_front << 8; // shift high byte to be high 8 bits
             lidar_dist_front |= Wire.read(); // receive low byte as lower 8 bits
             lidar_dist_front += LIDAR_CALIBRATE_DIFFERENCE;
             // Dead reckon if sensor values are very high and not at turning point (gap) or noise
-            if( (lidar_dist_front > MAX_WALL_DISTANCE && safeToTurn == 0) || lidar_dist_front < 10 )
-            {
+            if( (lidar_dist_front > MAX_WALL_DISTANCE && safeToTurn == 0) || lidar_dist_front < 10 ) {
               gapToLeft = 1;
               Serial.println("DEAD RECKON FRONT");
               lidar_dist_front = last_lidar_dist_front;
@@ -316,14 +310,12 @@ void calcLidar(void)
     
         Wire.requestFrom((int)LIDARLite_ADDRESS, 2); // request 2 bytes from LIDAR-Lite
     
-        if(2 <= Wire.available()) // if two bytes were received
-        {
+        if(2 <= Wire.available()) {// if two bytes were received
             lidar_dist_back = Wire.read(); // receive high byte (overwrites previous reading)
             lidar_dist_back = lidar_dist_back << 8; // shift high byte to be high 8 bits
             lidar_dist_back |= Wire.read(); // receive low byte as lower 8 bits
             // Dead reckon if sensor values are very high and not at turning point (gap) or noise
-            if( (lidar_dist_back > MAX_WALL_DISTANCE && safeToTurn == 0) || lidar_dist_back < 10 )
-            {
+            if( (lidar_dist_back > MAX_WALL_DISTANCE && safeToTurn == 0) || lidar_dist_back < 10 ) {
               gapToLeft = 1;
               Serial.println("DEAD RECKON BACK");
               lidar_dist_back = last_lidar_dist_back;
@@ -346,12 +338,9 @@ void calcLidar(void)
   
   // Calculate deltaD
   deltaD = lidar_dist_back - lidar_dist_front;
-  if(deltaD > 0)
-  {
+  if(deltaD > 0) {
       distOfLeftWall = lidar_dist_front;
-  }
-  else
-  {
+  } else {
       distOfLeftWall = lidar_dist_back;
   }
 //   deltaD -= LIDAR_CALIBRATE_DIFFERENCE;
