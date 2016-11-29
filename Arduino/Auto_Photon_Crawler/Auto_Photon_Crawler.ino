@@ -1,4 +1,4 @@
-//Program to control a R/c car in a straigh path down a hallway
+// Program to control a R/c car in a straigh path down a hallway
 // Sensors: LIDAR, Ultrasonic Range
 // Control: PID
 // Actuation: Servos
@@ -7,16 +7,19 @@
 #include <Servo.h>
 #include "math.h"
 #include "Wire.h"
+#include <SharpIR.h>
+#include <ArduinoSTL.h>
 
 //================================================
 //                     Globals
 //================================================ 
-#define MIN_FRONT_IR_VALUE 50 // 5ft original
+#define MIN_FRONT_IR_VALUE 40 // 5ft original
 #define LIDAR_CALIBRATE_DIFFERENCE 0 //8
 #define DEBUG 0 // 1 for debug mode, 0 for no, debug will disable motor and ultrasonic blocking
 #define TRANSMIT_DELAY 20
 #define MAX_WALL_DISTANCE 140
 #define IRpin A1
+#define IR_Sensor_Loop 5
 
 bool startup = true;        // used to ensure startup only happens once
 int startupDelay = 1000;    // time to pause at each calibration step
@@ -85,6 +88,10 @@ PID driftRightPID(&distOfRightWall, &driftOut, & driftSetPos,
               dKp,dKi,dKd,DIRECT);
 
 
+// IR Sensors
+SharpIR IR_Front(GP2Y0A02YK0F,A0);
+SharpIR IR_Right_Side(GP2Y0A02YK0F,A1);
+int IR_Data[5];
 //================================================
 //                     Setup
 //================================================
@@ -235,13 +242,19 @@ void calibrateESC() {
 }
 
 void calcFrontIR(void) {
-  float volts = analogRead(frontIRPin)*0.0048828125; ;
-  inches = 65*pow(volts, -1.10);  
+  for (int i = 0; i < IR_Sensor_Loop; i++) {
+    IR_Data[i] = IR_Front.getDistance();
+  }
+  std::sort(IR_Data,IR_Data + IR_Sensor_Loop);
+  inches = IR_Data[IR_Sensor_Loop/2];
+  Serial.println("FRONT IR DIST: " + String(inches));
 }
 
 void calcRightIR() {
-  float volts = analogRead(IRpin)*0.0048828125; ;
-  distOfRightWall = 65*pow(volts, -1.10);
+  for (int i = 0; i < IR_Sensor_Loop; i++) {
+    IR_Data[i] = IR_Right_Side.getDistance();
+  }
+  distOfRightWall = IR_Data[IR_Sensor_Loop/2];
   Serial.println("Right wall: " + String(distOfRightWall));
 }
 
