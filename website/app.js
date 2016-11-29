@@ -19,7 +19,7 @@ var XBeeAPI = new xbee_api.XBeeAPI({
 var portName = process.argv[2];//******************************************************************************
 //Note that with the XBeeAPI parser, the serialport's "data" event will not fire when messages are received!
 portConfig = {
-    baudRate: 9600,
+    baudRate: 57600,
     parser: XBeeAPI.rawParser()
 
 };
