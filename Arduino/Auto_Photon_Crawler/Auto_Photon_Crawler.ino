@@ -153,7 +153,7 @@ void loop()
   if(DISPLAY_FRONTIR_MSGS){
     Serial.println("Inches: " + String(inches));  
   }
-  while((inches > MIN_FRONT_IR_VALUE || DEBUG)||1) // && motion_id == "1"
+  while((inches > MIN_FRONT_IR_VALUE || DEBUG)) // && motion_id == "1"
   {
       calcFrontSonar();
       String dist = String(inches);
@@ -217,9 +217,18 @@ void loop()
         delay(1000);
       }
   }
-  //delay(10);
-  wheels.write(wheels_write_value);
+  delay(100);
   esc.write(90); 
+  wheels.write(90 + (90-wheels_write_value));
+  Serial.println("stoping motors");
+  delay(3000);
+  Serial.println("backing up");
+  esc.write(105);
+  delay(2000);
+  Serial.println("return to previous state...");
+  wheels.write(wheels_write_value);
+  esc.write(75);
+  delay(1500);
 }
 
 //================================================
@@ -271,12 +280,13 @@ void calibrateESC() {
 
 void calcFrontSonar(void) {
   inches = sonar.ping_cm();
-  if (inches == 0) {
+  if (inches <=10) {
     inches = 200;
   }
   if(DISPLAY_FRONTIR_MSGS){
     Serial.println("FRONT IR DIST: " + String(inches));
   }
+  delay(40);
 }
 
 void calcRightIR() {
