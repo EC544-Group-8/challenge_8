@@ -16,6 +16,9 @@
 #define MIN_FRONT_IR_VALUE 40 // 5ft original
 #define LIDAR_CALIBRATE_DIFFERENCE 0 //8
 #define DEBUG 0 // 1 for debug mode, 0 for no, debug will disable motor and ultrasonic blocking
+#define DISPLAY_PIDS_MSGS 1
+#define DISPLAY_FRONTIR_MSGS 1
+#define DISPLAY_RIGHTIR_MSGS 1
 #define TRANSMIT_DELAY 20
 #define MAX_WALL_DISTANCE 140
 #define IRpin A1
@@ -73,6 +76,7 @@ double distOfLeftWall;
 double driftOut;
 double driftSetPos = 100;   // upstairs
 // double driftSetPos = 70; // UAV LAB
+double driftRightSetPos = 80;
 
 double distOfRightWall;
 int safeToTurn = 0;
@@ -84,7 +88,7 @@ double dKp = 0.7,dKi= 0.0,dKd = 0.04;
 PID driftPID(&distOfLeftWall, &driftOut, & driftSetPos,
               dKp,dKi,dKd,DIRECT);
 
-PID driftRightPID(&distOfRightWall, &driftOut, & driftSetPos,
+PID driftRightPID(&distOfRightWall, &driftOut, & driftRightSetPos,
               dKp,dKi,dKd,DIRECT);
 
 
@@ -140,12 +144,16 @@ void setup()
 void loop()
 {
   calcFrontIR();
-  Serial.println("Inches: " + String(inches));
+  if(DISPLAY_FRONTIR_MSGS){
+    Serial.println("Inches: " + String(inches));  
+  }
   while((inches > MIN_FRONT_IR_VALUE || DEBUG)) // && motion_id == "1"
   {
       calcFrontIR();
       String dist = String(inches);
-      Serial.println("FRONT_IR: " + dist);
+      if(DISPLAY_FRONTIR_MSGS){
+        Serial.println("FRONT_IR: " + dist);
+      }
 
       // Check the right wall
       calcRightIR();
@@ -153,19 +161,30 @@ void loop()
       // Calculate the left wall
       calcLidar();
       if(gapToLeft == 1) {
+        if(DISPLAY_RIGHTIR_MSGS){
+          Serial.println("RIGHT LOOP ");
+        }
         driftRightPIDloop();
+        wheels_write_value = 90+driftOut; // The drift out value is opposite of left side
       } else {
         driftPIDloop();
         steeringPIDloop();
+        wheels_write_value = 90+(steeringOut - driftOut)/2;
+
       }
-      wheels_write_value = 90+(steeringOut - driftOut)/2;
+      
+      if(DISPLAY_RIGHTIR_MSGS){
+          Serial.println("wheels_write_value: " + String(wheels_write_value));
+      }
 
       // Too close to right wall, with room on the left
-      Serial.println("- Right wall: " + String(distOfRightWall));
-      Serial.println("- Left wall: " + String(distOfLeftWall));
+      if(DISPLAY_RIGHTIR_MSGS){
+        Serial.println("- Right wall: " + String(distOfRightWall) + " - Left wall: " + String(distOfLeftWall));
+      }
       if(distOfRightWall < 20 && distOfLeftWall > 20) {
-        Serial.println("WALLLLLLLLL!!! ");
-        wheels_write_value = 65;
+        if(DISPLAY_RIGHTIR_MSGS){
+          Serial.println("Running into right WALLLLLLLLL!!! ");
+        }
       }
       
       // Turning LEDs
@@ -180,10 +199,13 @@ void loop()
         
       wheels.write(wheels_write_value);
       //avg outputs and write them to the servo
-      if(!DEBUG)
+      if(!DEBUG){
         esc.write(80); // originally 60 as the prime value
-      Serial.println("Steeringout: " + String(steeringOut));
-      Serial.println("Driftout: " + String(driftOut));
+      }
+      if(DISPLAY_PIDS_MSGS){
+        Serial.println("Steeringout: " + String(steeringOut));
+        Serial.println("Driftout: " + String(driftOut));
+      }
 
       if (DEBUG) {
         delay(1000);
@@ -247,7 +269,9 @@ void calcFrontIR(void) {
   }
   std::sort(IR_Data,IR_Data + IR_Sensor_Loop);
   inches = IR_Data[IR_Sensor_Loop/2];
-  Serial.println("FRONT IR DIST: " + String(inches));
+  if(DISPLAY_FRONTIR_MSGS){
+    Serial.println("FRONT IR DIST: " + String(inches));
+  }
 }
 
 void calcRightIR() {
@@ -255,7 +279,6 @@ void calcRightIR() {
     IR_Data[i] = IR_Right_Side.getDistance();
   }
   distOfRightWall = IR_Data[IR_Sensor_Loop/2];
-  Serial.println("Right wall: " + String(distOfRightWall));
 }
 
 void calcLidar(void) {
@@ -289,7 +312,9 @@ void calcLidar(void) {
             // Dead reckon if sensor values are very high and not at turning point (gap) or noise
             if( (lidar_dist_front > MAX_WALL_DISTANCE && safeToTurn == 0) || lidar_dist_front < 10 ) {
               gapToLeft = 1;
-              Serial.println("DEAD RECKON FRONT");
+              if(DISPLAY_RIGHTIR_MSGS){
+                Serial.println("GAP TO LEFT - FRONT");
+              }
               lidar_dist_front = last_lidar_dist_front;
             } else {
               gapToLeft = 0;
@@ -299,7 +324,9 @@ void calcLidar(void) {
             // lidar_dist_front_avg += lidar_dist_front;
             String debug1 = "FRONT LIDAR...";
             debug1.concat(String(lidar_dist_front));
-            Serial.println(debug1);
+            if(DISPLAY_PIDS_MSGS){
+              Serial.println(debug1);
+            }
             
         }
         // ---------  END FRONT LIDAR  -------------
@@ -330,7 +357,9 @@ void calcLidar(void) {
             // Dead reckon if sensor values are very high and not at turning point (gap) or noise
             if( (lidar_dist_back > MAX_WALL_DISTANCE && safeToTurn == 0) || lidar_dist_back < 10 ) {
               gapToLeft = 1;
-              Serial.println("DEAD RECKON BACK");
+              if(DISPLAY_RIGHTIR_MSGS){
+                Serial.println("GAP TO LEFT - BACK");
+              }
               lidar_dist_back = last_lidar_dist_back;
             } else {
               gapToLeft = 0;
@@ -341,7 +370,9 @@ void calcLidar(void) {
             // lidar_dist_back_avg += lidar_dist_back;
             String debug2 = "BACK LIDAR...";
             debug2.concat(String(lidar_dist_back));
-            Serial.println(debug2);
+            if(DISPLAY_PIDS_MSGS){
+              Serial.println(debug2);
+            }
             //delay(1000);
             // Particle.publish("DEBUG",String(lidar_dist_back));
         }
@@ -358,7 +389,9 @@ void calcLidar(void) {
   }
 //   deltaD -= LIDAR_CALIBRATE_DIFFERENCE;
   //distOfLeftWall = (lidar_dist_back + lidar_dist_front)/2;
-   Serial.println("DELTA: " + String(deltaD));
+    if(DISPLAY_PIDS_MSGS){
+      Serial.println("DELTA: " + String(deltaD));
+    }
   // Print serial deltaD here 
     // }
 }
