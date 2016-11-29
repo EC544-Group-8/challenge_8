@@ -2,27 +2,30 @@
 // Sensors: LIDAR, Ultrasonic Range
 // Control: PID
 // Actuation: Servos
-
 #include <PID_v1.h>
 #include <Servo.h>
 #include "math.h"
 #include "Wire.h"
 #include <SharpIR.h>
 #include <ArduinoSTL.h>
+#include <NewPing.h>
 
 //================================================
 //                     Globals
 //================================================ 
-#define MIN_FRONT_IR_VALUE 40 // 5ft original
+#define MIN_FRONT_IR_VALUE 60 // 5ft original
 #define LIDAR_CALIBRATE_DIFFERENCE 0 //8
 #define DEBUG 0 // 1 for debug mode, 0 for no, debug will disable motor and ultrasonic blocking
-#define DISPLAY_PIDS_MSGS 1
+#define DISPLAY_PIDS_MSGS 0
 #define DISPLAY_FRONTIR_MSGS 1
-#define DISPLAY_RIGHTIR_MSGS 1
+#define DISPLAY_RIGHTIR_MSGS 0
 #define TRANSMIT_DELAY 20
 #define MAX_WALL_DISTANCE 140
 #define IRpin A1
 #define IR_Sensor_Loop 5
+#define TRIGGER_PIN  12
+#define ECHO_PIN     11
+#define MAX_DISTANCE 200
 
 bool startup = true;        // used to ensure startup only happens once
 int startupDelay = 1000;    // time to pause at each calibration step
@@ -79,7 +82,7 @@ double driftSetPos = 100;   // upstairs
 double driftRightSetPos = 80;
 
 double distOfRightWall;
-int safeToTurn = 0;
+int safeToTurn = 1;
 int gapToLeft = 0;
 
 // 0.7 0 0      (Saved Values for different speeds)
@@ -96,6 +99,9 @@ PID driftRightPID(&distOfRightWall, &driftOut, & driftRightSetPos,
 SharpIR IR_Front(GP2Y0A02YK0F,A0);
 SharpIR IR_Right_Side(GP2Y0A02YK0F,A1);
 int IR_Data[5];
+
+// HCSR-04
+NewPing sonar(TRIGGER_PIN, ECHO_PIN, MAX_DISTANCE);
 //================================================
 //                     Setup
 //================================================
@@ -124,17 +130,17 @@ void setup()
   // Initialize PIDs
   // Keep Crawler going Straight ahead
   steeringPID.SetSampleTime(100);
-  steeringPID.SetOutputLimits(-60,60);
+  steeringPID.SetOutputLimits(-90,90);
   steeringPID.SetMode(AUTOMATIC);
   
   // Don't Let Crawler get too close to left wall
   driftPID.SetSampleTime(100);
-  driftPID.SetOutputLimits(-60,60);
+  driftPID.SetOutputLimits(-90,90);
   driftPID.SetMode(AUTOMATIC); 
 
   // Don't Let Crawler get too close to right wall
   driftRightPID.SetSampleTime(100);
-  driftRightPID.SetOutputLimits(-60,60);
+  driftRightPID.SetOutputLimits(-90,90);
   driftRightPID.SetMode(AUTOMATIC); 
 }
 
@@ -143,13 +149,13 @@ void setup()
 //================================================
 void loop()
 {
-  calcFrontIR();
+  calcFrontSonar();
   if(DISPLAY_FRONTIR_MSGS){
     Serial.println("Inches: " + String(inches));  
   }
-  while((inches > MIN_FRONT_IR_VALUE || DEBUG)) // && motion_id == "1"
+  while((inches > MIN_FRONT_IR_VALUE || DEBUG)||1) // && motion_id == "1"
   {
-      calcFrontIR();
+      calcFrontSonar();
       String dist = String(inches);
       if(DISPLAY_FRONTIR_MSGS){
         Serial.println("FRONT_IR: " + dist);
@@ -200,7 +206,7 @@ void loop()
       wheels.write(wheels_write_value);
       //avg outputs and write them to the servo
       if(!DEBUG){
-        esc.write(80); // originally 60 as the prime value
+        esc.write(75); // originally 60 as the prime value
       }
       if(DISPLAY_PIDS_MSGS){
         Serial.println("Steeringout: " + String(steeringOut));
@@ -263,12 +269,11 @@ void calibrateESC() {
     esc.write(90); // reset the ESC to neutral (non-moving) value
 }
 
-void calcFrontIR(void) {
-  for (int i = 0; i < IR_Sensor_Loop; i++) {
-    IR_Data[i] = IR_Front.getDistance();
+void calcFrontSonar(void) {
+  inches = sonar.ping_cm();
+  if (inches == 0) {
+    inches = 200;
   }
-  std::sort(IR_Data,IR_Data + IR_Sensor_Loop);
-  inches = IR_Data[IR_Sensor_Loop/2];
   if(DISPLAY_FRONTIR_MSGS){
     Serial.println("FRONT IR DIST: " + String(inches));
   }
