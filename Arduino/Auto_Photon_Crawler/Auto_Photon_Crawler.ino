@@ -108,16 +108,21 @@ void setup()
   pinMode(back_LDR_pin,OUTPUT);
   pinMode(front_LDR_pin,OUTPUT);
 
-  // Ultrasonic Collision
-  
-  // PID
+  // Initialize PIDs
+  // Keep Crawler going Straight ahead
   steeringPID.SetSampleTime(100);
   steeringPID.SetOutputLimits(-60,60);
   steeringPID.SetMode(AUTOMATIC);
   
+  // Don't Let Crawler get too close to left wall
   driftPID.SetSampleTime(100);
   driftPID.SetOutputLimits(-60,60);
   driftPID.SetMode(AUTOMATIC); 
+
+  // Don't Let Crawler get too close to right wall
+  driftRightPID.SetSampleTime(100);
+  driftRightPID.SetOutputLimits(-60,60);
+  driftRightPID.SetMode(AUTOMATIC); 
 }
 
 //================================================
