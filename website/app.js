@@ -9,7 +9,7 @@ var http = require('http').Server(app);
 // };
 
 // ---- Brought over from "/matlab/RSSI_SERVER.js" ---- //
-var client = require('./client');
+// xvar client = require('./client');
 var xbee_api = require('xbee-api');
 var C = xbee_api.constants;
 var XBeeAPI = new xbee_api.XBeeAPI({
@@ -26,12 +26,12 @@ portConfig = {
 
 var sp = new SerialPort.SerialPort(portName, portConfig);//*****************************************************
 
-var host='localhost';
-var port=5000;
-var c = new client(host, port);
+// var host='localhost';
+// var port=5000;
+// var c = new client(host, port);
 
 // Begin the function that handles the receipt of data from Matlab, and adds it to a queue
-c.receive();
+// c.receive();
 
 app.use(express.static(__dirname + '/public'));
 
@@ -72,6 +72,50 @@ sp.on("open", function () {
 
 // ------------ END - SEND RSSI REQUEST FROM COORDINATOR ------------ //
 
+// global variables
+var fs = require('fs');
+var parse = require('csv-parse');
+var csvData=[];
+
+// csv file reader
+fs.createReadStream('DB_Small.txt')
+    .pipe(parse({delimiter: ','}))
+    .on('data', function(csvrow) {
+        csvData.push(csvrow);
+        //console.log(csvrow);
+    })
+    .on('end',function() {
+      POS = predict([79,60,48,82]); // remove this for implementation 
+      storeLocations(POS);
+    });
+
+
+
+// predict the nth neighbors
+function predict(sample) {
+    var delta = {};
+    var nbr = -1;
+    // loop through the matrix
+    for (i = 0; i < csvData.length; i++) {
+        var sum = 0;
+        for(j = 1; j < csvData[0].length; j++) {
+            sum += Math.pow(parseFloat(csvData[i][j])-sample[j-1],2);
+        }
+        // push to data container
+        delta[parseFloat(csvData[i][0])] = Math.sqrt(sum);
+    }
+    // find the minimum value
+    var min = 1000;
+    for(var key in delta) {
+        if (delta[key] < min) {
+            min = delta[key];
+            nbr = key;
+        }
+    }
+    console.log(nbr);
+    return nbr;
+}
+
 
 
 
@@ -96,9 +140,12 @@ XBeeAPI.on("frame_object", function(frame) {
     console.log(bd_length);
 
     if(bd_length >= 4){
-      // Send to Matlab
       var data_to_send = beacon_data['1'] + ',' + beacon_data['2'] + ',' +beacon_data['3'] + ',' +beacon_data['4'];
-      c.send(data_to_send);
+      // Send to matlab
+      // c.send(data_to_send);
+      // Predict the bin based off the data
+      predict(data_to_send);
+
       // Reset beacon data
       resetBeaconData();
     }
