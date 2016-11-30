@@ -113,21 +113,19 @@ function predict(sample) {
 }
 
 
-
-
 // --------- BEGIN - HANDLE RSSI VALUES FROM THE NODES ---------- //
 
 // Instantiate the beacon data array
 var beacon_data = {};
 var bd_length = Object.keys(beacon_data).length;
 
-// Reset the beacon data after sent to matlab
+// Reset the beacon data after prediction made
 var resetBeaconData = function() {
   beacon_data = {};
   bd_length = 0;
 };
 
-// When the Coordinator Xbee receives the RSSI values, gather them, and send them to matlab
+// When the Coordinator Xbee receives the RSSI values, gather them, and make the bin prediction
 XBeeAPI.on("frame_object", function(frame) {
   if (frame.type == 144){
     console.log("Beacon ID: " + frame.data[1] + ", RSSI: " + (frame.data[0]));
@@ -137,8 +135,6 @@ XBeeAPI.on("frame_object", function(frame) {
 
     if(bd_length >= 4){
       var data_to_send = [beacon_data['1'], beacon_data['2'], beacon_data['3'], beacon_data['4']];
-      // Send to matlab
-      // c.send(data_to_send);
       // Predict the bin based off the data
       bin_history.push(predict(data_to_send));
 
@@ -148,7 +144,6 @@ XBeeAPI.on("frame_object", function(frame) {
   }
 });
 
-//setInterval(function(){c.send('59,60,62,74'); /*console.log('sent');*/},3000);
 
 // ------------ END - HANDLE RSSI VALUES FROM THE NODES ------------ //
 
@@ -163,9 +158,3 @@ app.get('/get_location', function(req, res){
 	// Send the current bin_id back to the view
 	res.send(bin_history[bin_history.length - 1]);
 });
-
-// setInterval(function(){c.send('[52,65,75,65]'); console.log('data sent');},5000);   // 7
-// setInterval(function(){c.send('[30,40,50,60]'); console.log('data sent');},6000);   // 9
-// setInterval(function(){c.send('[60,51,66,81]'); console.log('data sent');},7000);   // 13
-// setInterval(function(){c.send('[60,51,66,81]'); console.log('data sent');},8000);   // 13
-// setInterval(function(){c.send('[60,51,66,81]'); console.log('data sent');},9000);   // 13
