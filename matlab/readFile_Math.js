@@ -19,7 +19,7 @@ fs.createReadStream('DB_Small.txt')
         //console.log(csvrow);
     })
     .on('end',function() {
-      POS = predict([45,77,79,47]); // remove this for implementation 
+      POS = predict([79,60,48,82]); // remove this for implementation 
       storeLocations(POS);
     });
 
@@ -31,10 +31,10 @@ function predict(sample) {
     for (i = 0; i < csvData.length; i++) {
         var sum = 0;
         for(j = 1; j < csvData[0].length; j++) {
-            sum += Math.abs(parseFloat(csvData[i][j])-sample[j-1]);
+            sum += Math.pow(parseFloat(csvData[i][j])-sample[j-1],2);
         }
         // push to data container
-        delta[parseFloat(csvData[i][0])] = sum;
+        delta[parseFloat(csvData[i][0])] = Math.sqrt(sum);
     }
     // find the minimum value
     var min = 1000;
