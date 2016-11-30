@@ -76,19 +76,15 @@ sp.on("open", function () {
 var fs = require('fs');
 var parse = require('csv-parse');
 var csvData=[];
+var bin_history = [];
 
-// csv file reader
-fs.createReadStream('DB_Small.txt')
+// read the file and save to global variable
+fs.createReadStream('DB_AVG.txt')
     .pipe(parse({delimiter: ','}))
     .on('data', function(csvrow) {
         csvData.push(csvrow);
         //console.log(csvrow);
-    })
-    .on('end',function() {
-      POS = predict([79,60,48,82]); // remove this for implementation 
-      storeLocations(POS);
     });
-
 
 
 // predict the nth neighbors
@@ -140,11 +136,11 @@ XBeeAPI.on("frame_object", function(frame) {
     console.log(bd_length);
 
     if(bd_length >= 4){
-      var data_to_send = beacon_data['1'] + ',' + beacon_data['2'] + ',' +beacon_data['3'] + ',' +beacon_data['4'];
+      var data_to_send = [beacon_data['1'], beacon_data['2'], beacon_data['3'], beacon_data['4']];
       // Send to matlab
       // c.send(data_to_send);
       // Predict the bin based off the data
-      predict(data_to_send);
+      bin_history.push(predict(data_to_send));
 
       // Reset beacon data
       resetBeaconData();
@@ -165,7 +161,7 @@ XBeeAPI.on("frame_object", function(frame) {
 // For getting the most recent location of the moving device
 app.get('/get_location', function(req, res){
 	// Send the current bin_id back to the view
-	res.send(c.queue[c.queue.length - 1]);
+	res.send(bin_history[bin_history.length - 1]);
 });
 
 // setInterval(function(){c.send('[52,65,75,65]'); console.log('data sent');},5000);   // 7
