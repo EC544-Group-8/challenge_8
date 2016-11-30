@@ -30,7 +30,7 @@ This example is for Series 2 XBee
 */
 
 // Should be a unique ID between 0 and 255.
-uint8_t BEACON_ID = 1;
+uint8_t BEACON_ID = 4;
 
 
 XBee xbee = XBee();
@@ -50,7 +50,7 @@ SoftwareSerial xbeeSerial(2,3);
 void setup() {  
   // start serial
   Serial.begin(9600);
-  xbeeSerial.begin(9600);
+  xbeeSerial.begin(57600);
   xbee.setSerial(xbeeSerial);
   Serial.println("Initializing beacon...");
 }
