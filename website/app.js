@@ -62,7 +62,7 @@ var requestRSSI = function(){
 };
 
 
-var sampleDelay = 3000;
+var sampleDelay = 2500;
 // Every "sampleDelay" seconds, gather new RSSI values********************************************************
 sp.on("open", function () {
   console.log('open');
