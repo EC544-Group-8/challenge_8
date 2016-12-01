@@ -1,0 +1,5 @@
+Need to do these things on startup of Pi:
+
+sudo service motion start
+sudo motion
+node app.js <xbee port>

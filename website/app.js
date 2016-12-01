@@ -158,3 +158,20 @@ app.get('/get_location', function(req, res){
 	// Send the current bin_id back to the view
 	res.send(bin_history[bin_history.length - 1]);
 });
+
+// For starting/stopping
+app.get('/start_stop_crawler', function(req, res){
+	res.send("1");
+
+});
+
+// For going left
+app.get('/turn_left', function(req, res){
+	res.send("1");
+
+});
+
+// For going right
+app.get('/turn_right', function(req, res){
+	res.send("1");
+});

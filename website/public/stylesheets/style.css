@@ -7,3 +7,19 @@ body {
     line-height: "500px";
 
 }
+.btn {
+	float: bottom,
+	align: bottom
+}
+
+#floor_plan {
+	align: left
+}
+
+#webcam {
+	align: right,
+	width: 640,
+	height: 480,
+	frameBorder: 0,
+	
+}
