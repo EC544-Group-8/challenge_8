@@ -21,8 +21,8 @@ portConfig = {
 var sp = new SerialPort.SerialPort(portName, portConfig);//*****************************************************
 
 // raspberry PI GPIO Pins
-int safe_to_turn_pin = 2;
-int start_stop_pin = 3;
+var safe_to_turn_pin = 2;
+var start_stop_pin = 3;
 // setup
 gpio.setup(safe_to_turn_pin, gpio.DIR_OUT);
 gpio.setup(start_stop_pin, gpio.DIR_OUT);
