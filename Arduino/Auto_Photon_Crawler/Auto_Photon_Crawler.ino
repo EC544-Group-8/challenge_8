@@ -111,6 +111,7 @@ int gapToLeft = 0;
 int start_or_stop = 0;
 int left = 0;
 int right = 0;
+
 //================================================
 //                     Setup
 //================================================
@@ -157,6 +158,7 @@ void setup()
   pinMode(remote_start_stop_pin,INPUT);
   pinMode(remote_left_pin,INPUT);
   pinMode(remote_right_pin,INPUT);
+
 }
 
 //================================================
@@ -171,17 +173,17 @@ void loop()
       Serial.println("Inches: " + String(inches));  
     }
     while((inches > MIN_FRONT_IR_VALUE || DEBUG))// && start_or_stop ) // && motion_id == "1"
-    {
+       {
         start_or_stop = digitalRead(remote_start_stop_pin);
         calcFrontSonar();
         String dist = String(inches);
         if(DISPLAY_FRONTIR_MSGS){
           Serial.println("FRONT_IR: " + dist);
         }
-  
+
         // Check the right wall
         calcRightIR();
-  
+
         // Calculate the left wall
         calcLidar();
         if(gapToLeft == 1) {
@@ -194,13 +196,13 @@ void loop()
           driftPIDloop();
           steeringPIDloop();
           wheels_write_value = 90+(steeringOut - driftOut)/2;
-  
+
         }
         
         if(DISPLAY_RIGHTIR_MSGS){
             Serial.println("wheels_write_value: " + String(wheels_write_value));
         }
-  
+
         // Too close to right wall, with room on the left
         if(DISPLAY_RIGHTIR_MSGS){
           Serial.println("- Right wall: " + String(distOfRightWall) + " - Left wall: " + String(distOfLeftWall));
@@ -230,7 +232,7 @@ void loop()
           Serial.println("Steeringout: " + String(steeringOut));
           Serial.println("Driftout: " + String(driftOut));
         }
-  
+
         if (DEBUG) {
           delay(1000);
         }
