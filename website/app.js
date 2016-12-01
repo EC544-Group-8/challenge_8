@@ -9,7 +9,7 @@ var http = require('http').Server(app);
 // };
 
 // ---- Brought over from "/matlab/RSSI_SERVER.js" ---- //
-var client = require('./client');
+// xvar client = require('./client');
 var xbee_api = require('xbee-api');
 var C = xbee_api.constants;
 var XBeeAPI = new xbee_api.XBeeAPI({
@@ -26,12 +26,12 @@ portConfig = {
 
 var sp = new SerialPort.SerialPort(portName, portConfig);//*****************************************************
 
-var host='localhost';
-var port=5000;
-var c = new client(host, port);
+// var host='localhost';
+// var port=5000;
+// var c = new client(host, port);
 
 // Begin the function that handles the receipt of data from Matlab, and adds it to a queue
-c.receive();
+// c.receive();
 
 app.use(express.static(__dirname + '/public'));
 
@@ -72,7 +72,45 @@ sp.on("open", function () {
 
 // ------------ END - SEND RSSI REQUEST FROM COORDINATOR ------------ //
 
+// global variables
+var fs = require('fs');
+var parse = require('csv-parse');
+var csvData=[];
+var bin_history = [];
 
+// read the file and save to global variable
+fs.createReadStream('DB_AVG.txt')
+    .pipe(parse({delimiter: ','}))
+    .on('data', function(csvrow) {
+        csvData.push(csvrow);
+        //console.log(csvrow);
+    });
+
+
+// predict the nth neighbors
+function predict(sample) {
+    var delta = {};
+    var nbr = -1;
+    // loop through the matrix
+    for (i = 0; i < csvData.length; i++) {
+        var sum = 0;
+        for(j = 1; j < csvData[0].length; j++) {
+            sum += Math.pow(parseFloat(csvData[i][j])-sample[j-1],2);
+        }
+        // push to data container
+        delta[parseFloat(csvData[i][0])] = Math.sqrt(sum);
+    }
+    // find the minimum value
+    var min = 1000;
+    for(var key in delta) {
+        if (delta[key] < min) {
+            min = delta[key];
+            nbr = key;
+        }
+    }
+    console.log(nbr);
+    return nbr;
+}
 
 
 // --------- BEGIN - HANDLE RSSI VALUES FROM THE NODES ---------- //
@@ -81,13 +119,13 @@ sp.on("open", function () {
 var beacon_data = {};
 var bd_length = Object.keys(beacon_data).length;
 
-// Reset the beacon data after sent to matlab
+// Reset the beacon data after prediction made
 var resetBeaconData = function() {
   beacon_data = {};
   bd_length = 0;
 };
 
-// When the Coordinator Xbee receives the RSSI values, gather them, and send them to matlab
+// When the Coordinator Xbee receives the RSSI values, gather them, and make the bin prediction
 XBeeAPI.on("frame_object", function(frame) {
   if (frame.type == 144){
     console.log("Beacon ID: " + frame.data[1] + ", RSSI: " + (frame.data[0]));
@@ -96,16 +134,16 @@ XBeeAPI.on("frame_object", function(frame) {
     console.log(bd_length);
 
     if(bd_length >= 4){
-      // Send to Matlab
-      var data_to_send = beacon_data['1'] + ',' + beacon_data['2'] + ',' +beacon_data['3'] + ',' +beacon_data['4'];
-      c.send(data_to_send);
+      var data_to_send = [beacon_data['1'], beacon_data['2'], beacon_data['3'], beacon_data['4']];
+      // Predict the bin based off the data
+      bin_history.push(predict(data_to_send));
+
       // Reset beacon data
       resetBeaconData();
     }
   }
 });
 
-//setInterval(function(){c.send('59,60,62,74'); /*console.log('sent');*/},3000);
 
 // ------------ END - HANDLE RSSI VALUES FROM THE NODES ------------ //
 
@@ -118,11 +156,5 @@ XBeeAPI.on("frame_object", function(frame) {
 // For getting the most recent location of the moving device
 app.get('/get_location', function(req, res){
 	// Send the current bin_id back to the view
-	res.send(c.queue[c.queue.length - 1]);
+	res.send(bin_history[bin_history.length - 1]);
 });
-
-// setInterval(function(){c.send('[52,65,75,65]'); console.log('data sent');},5000);   // 7
-// setInterval(function(){c.send('[30,40,50,60]'); console.log('data sent');},6000);   // 9
-// setInterval(function(){c.send('[60,51,66,81]'); console.log('data sent');},7000);   // 13
-// setInterval(function(){c.send('[60,51,66,81]'); console.log('data sent');},8000);   // 13
-// setInterval(function(){c.send('[60,51,66,81]'); console.log('data sent');},9000);   // 13
