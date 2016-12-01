@@ -28,14 +28,14 @@ var start_stop_pin = 23;
 // gpio.setup(start_stop_pin, gpio.DIR_OUT);
 
  
-gpio.setup(23, gpio.DIR_OUT, write);
+//gpio.setup(23, gpio.DIR_OUT, write);
  
-function write() {
-    gpio.write(23, true, function(err) {
-        if (err) throw err;
-        console.log('Written to pin 23');
-    });
-}
+//function write() {
+//    gpio.write(23, true, function(err) {
+//        if (err) throw err;
+//        console.log('Written to pin 23');
+//    });
+//}
 
 // // functions
 // function updateSafeTurn(status) {
@@ -179,10 +179,10 @@ app.get('/get_location', function(req, res){
 	// Send the current bin_id back to the view
   var position = bin_history[bin_history.length - 1];
   if (position < 53 && position > 48) {
-    updateSafeTurn(false);
+//    updateSafeTurn(false);
   }
   else {
-    updateSafeTurn(true);
+//    updateSafeTurn(true);
   }
 	res.send(position);
 });
