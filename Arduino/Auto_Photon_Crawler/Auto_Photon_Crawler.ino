@@ -27,6 +27,11 @@
 #define ECHO_PIN     11
 #define MAX_DISTANCE 200
 
+#define safe_to_turn_pin 5
+#define remote_start_stop_pin 6
+#define remote_left_pin 7
+#define remote_right_pin 8
+
 bool startup = true;        // used to ensure startup only happens once
 int startupDelay = 1000;    // time to pause at each calibration step
 double maxSpeedOffset = 45; // maximum speed magnitude, in servo 'degrees'
@@ -80,10 +85,7 @@ double driftOut;
 double driftSetPos = 100;   // upstairs
 // double driftSetPos = 70; // UAV LAB
 double driftRightSetPos = 80;
-
 double distOfRightWall;
-int safeToTurn = 1;
-int gapToLeft = 0;
 
 // 0.7 0 0      (Saved Values for different speeds)
 // 0.7 0 0.04
@@ -102,6 +104,13 @@ int IR_Data[5];
 
 // HCSR-04
 NewPing sonar(TRIGGER_PIN, ECHO_PIN, MAX_DISTANCE);
+
+// communicating with PI
+int safeToTurn = 0;
+int gapToLeft = 0;
+int start_or_stop = 0;
+int left = 0;
+int right = 0;
 //================================================
 //                     Setup
 //================================================
@@ -142,6 +151,12 @@ void setup()
   driftRightPID.SetSampleTime(100);
   driftRightPID.SetOutputLimits(-90,90);
   driftRightPID.SetMode(AUTOMATIC); 
+
+  // raspberry pi communication pins
+  pinMode(safe_to_turn_pin,INPUT);
+  pinMode(remote_start_stop_pin,INPUT);
+  pinMode(remote_left_pin,INPUT);
+  pinMode(remote_right_pin,INPUT);
 }
 
 //================================================
@@ -149,86 +164,90 @@ void setup()
 //================================================
 void loop()
 {
-  calcFrontSonar();
-  if(DISPLAY_FRONTIR_MSGS){
-    Serial.println("Inches: " + String(inches));  
-  }
-  while((inches > MIN_FRONT_IR_VALUE || DEBUG)) // && motion_id == "1"
-  {
-      calcFrontSonar();
-      String dist = String(inches);
-      if(DISPLAY_FRONTIR_MSGS){
-        Serial.println("FRONT_IR: " + dist);
-      }
-
-      // Check the right wall
-      calcRightIR();
-
-      // Calculate the left wall
-      calcLidar();
-      if(gapToLeft == 1) {
-        if(DISPLAY_RIGHTIR_MSGS){
-          Serial.println("RIGHT LOOP ");
+  start_or_stop = digitalRead(remote_start_stop_pin);
+  if(start_or_stop || 1) {
+    calcFrontSonar();
+    if(DISPLAY_FRONTIR_MSGS){
+      Serial.println("Inches: " + String(inches));  
+    }
+    while((inches > MIN_FRONT_IR_VALUE || DEBUG))// && start_or_stop ) // && motion_id == "1"
+    {
+        start_or_stop = digitalRead(remote_start_stop_pin);
+        calcFrontSonar();
+        String dist = String(inches);
+        if(DISPLAY_FRONTIR_MSGS){
+          Serial.println("FRONT_IR: " + dist);
         }
-        driftRightPIDloop();
-        wheels_write_value = 90+driftOut; // The drift out value is opposite of left side
-      } else {
-        driftPIDloop();
-        steeringPIDloop();
-        wheels_write_value = 90+(steeringOut - driftOut)/2;
-
-      }
-      
-      if(DISPLAY_RIGHTIR_MSGS){
-          Serial.println("wheels_write_value: " + String(wheels_write_value));
-      }
-
-      // Too close to right wall, with room on the left
-      if(DISPLAY_RIGHTIR_MSGS){
-        Serial.println("- Right wall: " + String(distOfRightWall) + " - Left wall: " + String(distOfLeftWall));
-      }
-      if(distOfRightWall < 20 && distOfLeftWall > 20) {
-        if(DISPLAY_RIGHTIR_MSGS){
-          Serial.println("Running into right WALLLLLLLLL!!! ");
+  
+        // Check the right wall
+        calcRightIR();
+  
+        // Calculate the left wall
+        calcLidar();
+        if(gapToLeft == 1) {
+          if(DISPLAY_RIGHTIR_MSGS){
+            Serial.println("RIGHT LOOP ");
+          }
+          driftRightPIDloop();
+          wheels_write_value = 90+driftOut; // The drift out value is opposite of left side
+        } else {
+          driftPIDloop();
+          steeringPIDloop();
+          wheels_write_value = 90+(steeringOut - driftOut)/2;
+  
         }
-      }
-      
-      // Turning LEDs
-      if(wheels_write_value < 90){
-        digitalWrite(right_led, LOW);
-        digitalWrite(left_led, HIGH);
-      }
-      else if (wheels_write_value > 90){
-        digitalWrite(left_led, LOW);
-        digitalWrite(right_led, HIGH);
-      }
         
-      wheels.write(wheels_write_value);
-      //avg outputs and write them to the servo
-      if(!DEBUG){
-        esc.write(75); // originally 60 as the prime value
-      }
-      if(DISPLAY_PIDS_MSGS){
-        Serial.println("Steeringout: " + String(steeringOut));
-        Serial.println("Driftout: " + String(driftOut));
-      }
-
-      if (DEBUG) {
-        delay(1000);
-      }
+        if(DISPLAY_RIGHTIR_MSGS){
+            Serial.println("wheels_write_value: " + String(wheels_write_value));
+        }
+  
+        // Too close to right wall, with room on the left
+        if(DISPLAY_RIGHTIR_MSGS){
+          Serial.println("- Right wall: " + String(distOfRightWall) + " - Left wall: " + String(distOfLeftWall));
+        }
+        if(distOfRightWall < 20 && distOfLeftWall > 20) {
+          if(DISPLAY_RIGHTIR_MSGS){
+            Serial.println("Running into right WALLLLLLLLL!!! ");
+          }
+        }
+        
+        // Turning LEDs
+        if(wheels_write_value < 90){
+          digitalWrite(right_led, LOW);
+          digitalWrite(left_led, HIGH);
+        }
+        else if (wheels_write_value > 90){
+          digitalWrite(left_led, LOW);
+          digitalWrite(right_led, HIGH);
+        }
+          
+        wheels.write(wheels_write_value);
+        //avg outputs and write them to the servo
+        if(!DEBUG){
+          esc.write(75); // originally 60 as the prime value
+        }
+        if(DISPLAY_PIDS_MSGS){
+          Serial.println("Steeringout: " + String(steeringOut));
+          Serial.println("Driftout: " + String(driftOut));
+        }
+  
+        if (DEBUG) {
+          delay(1000);
+        }
+    }
+    delay(100);
+    esc.write(90); 
+    wheels.write(90 + (90-wheels_write_value));
+    Serial.println("stoping motors");
+    delay(3000);
+    Serial.println("backing up");
+    esc.write(105);
+    delay(2000);
+    Serial.println("return to previous state...");
+    wheels.write(wheels_write_value);
+    esc.write(75);
+    delay(1500);
   }
-  delay(100);
-  esc.write(90); 
-  wheels.write(90 + (90-wheels_write_value));
-  Serial.println("stoping motors");
-  delay(3000);
-  Serial.println("backing up");
-  esc.write(105);
-  delay(2000);
-  Serial.println("return to previous state...");
-  wheels.write(wheels_write_value);
-  esc.write(75);
-  delay(1500);
 }
 
 //================================================
@@ -301,6 +320,7 @@ void calcLidar(void) {
     // int n_samples = 3;
     // for(int i = 0; i < n_samples; i++){
         // ---------  THIS IS FOR THE FRONT LIDAR  -------------
+        safeToTurn = digitalRead(safe_to_turn_pin); // check in with the PI to see if we are in a turning bin
         digitalWrite(back_LDR_pin,LOW);
         digitalWrite(front_LDR_pin,HIGH);
         delay(5);

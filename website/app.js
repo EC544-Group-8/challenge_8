@@ -2,6 +2,7 @@ var SerialPort = require("serialport");
 var express = require('express');
 var app = express();
 var http = require('http').Server(app);
+var gpio = require('rpi-gpio');
 
 // portConfig = {
 // 	baudRate: 9600,
@@ -26,6 +27,26 @@ portConfig = {
 
 var sp = new SerialPort.SerialPort(portName, portConfig);//*****************************************************
 
+// raspberry PI GPIO Pins
+int safe_to_turn_pin = 2;
+int start_stop_pin = 3;
+// setup
+gpio.setup(safe_to_turn_pin, gpio.DIR_OUT);
+gpio.setup(start_stop_pin, gpio.DIR_OUT);
+// functions
+function updateSafeTurn(status) {
+    gpio.write(safe_to_turn_pin, status, function(err) {
+        if (err) throw err;
+        console.log('Turning Status set to: ' + String(status));
+    });
+}
+
+function updateStartStop(status) {
+    gpio.write(start_stop_pin, status, function(err) {
+        if (err) throw err;
+        console.log('Turning Status set to: ' + String(status));
+    });
+}
 // var host='localhost';
 // var port=5000;
 // var c = new client(host, port);
@@ -136,7 +157,8 @@ XBeeAPI.on("frame_object", function(frame) {
     if(bd_length >= 4){
       var data_to_send = [beacon_data['1'], beacon_data['2'], beacon_data['3'], beacon_data['4']];
       // Predict the bin based off the data
-      bin_history.push(predict(data_to_send));
+      var pos_prediction = predict(data_to_send);
+      bin_history.push(pos_prediction);
 
       // Reset beacon data
       resetBeaconData();
@@ -156,5 +178,17 @@ XBeeAPI.on("frame_object", function(frame) {
 // For getting the most recent location of the moving device
 app.get('/get_location', function(req, res){
 	// Send the current bin_id back to the view
-	res.send(bin_history[bin_history.length - 1]);
+  var position = bin_history[bin_history.length - 1];
+  if (position < 53 && position > 48) {
+    updateSafeTurn(false);
+  } 
+  else {
+    updateSafeTurn(true);
+  }
+	res.send(position);
 });
+
+
+
+
+
