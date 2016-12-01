@@ -24,22 +24,33 @@ var sp = new SerialPort.SerialPort(portName, portConfig);//*********************
 var safe_to_turn_pin = 2;
 var start_stop_pin = 23;
 // setup
-gpio.setup(safe_to_turn_pin, gpio.DIR_OUT);
-gpio.setup(start_stop_pin, gpio.DIR_OUT);
-// functions
-function updateSafeTurn(status) {
-    gpio.write(safe_to_turn_pin, status, function(err) {
+// gpio.setup(safe_to_turn_pin, gpio.DIR_OUT);
+// gpio.setup(start_stop_pin, gpio.DIR_OUT);
+
+ 
+gpio.setup(23, gpio.DIR_OUT, write);
+ 
+function write() {
+    gpio.write(23, true, function(err) {
         if (err) throw err;
-        console.log('Turning Status set to: ' + String(status));
+        console.log('Written to pin 23');
     });
 }
 
-function updateStartStop(status) {
-    gpio.write(start_stop_pin, status, function(err) {
-        if (err) throw err;
-        console.log('Turning Status set to: ' + String(status));
-    });
-}
+// // functions
+// function updateSafeTurn(status) {
+//     gpio.write(safe_to_turn_pin, status, function(err) {
+//         if (err) throw err;
+//         console.log('Turning Status set to: ' + String(status));
+//     });
+// }
+
+// function updateStartStop(status) {
+//     gpio.write(start_stop_pin, status, function(err) {
+//         if (err) throw err;
+//         console.log('Turning Status set to: ' + String(status));
+//     });
+// }
 
 
 app.use(express.static(__dirname + '/public'));
