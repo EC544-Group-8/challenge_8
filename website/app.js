@@ -2,7 +2,7 @@ var SerialPort = require("serialport");
 var express = require('express');
 var app = express();
 var http = require('http').Server(app);
-var gpio = require('rpi-gpio');
+var gpio = require('pi-gpio');
 
 var xbee_api = require('xbee-api');
 var C = xbee_api.constants;
@@ -23,19 +23,22 @@ var sp = new SerialPort.SerialPort(portName, portConfig);//*********************
 // raspberry PI GPIO Pins
 var safe_to_turn_pin = 2;
 var start_stop_pin = 23;
-// setup
-// gpio.setup(safe_to_turn_pin, gpio.DIR_OUT);
-// gpio.setup(start_stop_pin, gpio.DIR_OUT);
 
+var Gpio = require('onoff').Gpio,
+	    led = new Gpio(23, 'out');
  
-//gpio.setup(23, gpio.DIR_OUT, write);
+var iv = setInterval(function(){
+		led.writeSync(led.readSync() === 0 ? 1 : 0)
+}, 500);
  
-//function write() {
-//    gpio.write(23, true, function(err) {
-//        if (err) throw err;
-//        console.log('Written to pin 23');
-//    });
-//}
+// Stop blinking the LED and turn it off after 5 seconds.
+ setTimeout(function() {
+     clearInterval(iv); // Stop blinking
+         led.writeSync(0);  // Turn LED off.
+             led.unexport();    // Unexport GPIO and free resources
+             }, 5000);
+
+
 
 // // functions
 // function updateSafeTurn(status) {
