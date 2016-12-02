@@ -107,8 +107,10 @@ int IR_Data[5];
 NewPing sonar(TRIGGER_PIN, ECHO_PIN, MAX_DISTANCE);
 
 // communicating with PI
-int safeToTurn = 0;
+int safeToTurn = 1;
+int lookToRight = 0;
 int gapToLeft = 0;
+int inTheMiddleOfATurn = 0;
 int start_or_stop = 0;
 int left = 0;
 int right = 0;
@@ -188,7 +190,7 @@ void loop()
         // Calculate the left wall
         calcLidar();
         canITurn(deltaD);
-        if(gapToLeft == 1) {
+        if(lookToRight == 1) {
           if(DISPLAY_RIGHTIR_MSGS){
             Serial.println("RIGHT LOOP ");
           }
@@ -228,7 +230,7 @@ void loop()
         wheels.write(wheels_write_value);
         //avg outputs and write them to the servo
         if(!DEBUG){
-          esc.write(80); // originally 60 as the prime value
+          esc.write(75); // originally 60 as the prime value
         }
         if(DISPLAY_PIDS_MSGS){
           Serial.println("Steeringout: " + String(steeringOut));
@@ -248,9 +250,13 @@ void loop()
     esc.write(105);
     delay(2000);
     Serial.println("return to previous state...");
+    if(inTheMiddleOfATurn == 1) {
+      lastTurnTime = millis();
+    }
     wheels.write(wheels_write_value);
     esc.write(75);
-    delay(1500);
+    delay(1000);
+    
   }
 }
 
@@ -292,19 +298,33 @@ double radToDeg(double radians) {
 
 void canITurn(double delta){
   // If the difference between the lidars is > 100, then 
-
-  if(abs(delta) > 500 && safeToTurn == 1) {
-    Serial.println("DELTA!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-    lastTurnTime = millis();
+  Serial.println("CAN I TURN");
+  Serial.println(delta);
+  Serial.println(safeToTurn);
+  // If not in the middle of a turn
+  if(inTheMiddleOfATurn == 0) {
+    // If we see a big gap, and it is safe to rutn
+    if(abs(delta) > 500 && safeToTurn == 1) {
+      Serial.println("DELTA!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! STARTING TURN");
+      lastTurnTime = millis();
+      // start the turn
+      inTheMiddleOfATurn = 1;
+    }
   }
 
-  // If it has been more than 5 seconds since our last turn, don't make turns for the next 15 seconds
-  if(millis() - lastTurnTime > 5000) {
-    safeToTurn = 0;
-
-  } else if(millis() - lastTurnTime > 20000) {
-    // If it has been more than 20 seconds since our last turn, we are safe to turn again
-    safeToTurn = 1;
+  // if in the middle of a turn
+  if(inTheMiddleOfATurn == 1) {
+    // If it has been more than 5 seconds since our last turn, don't make turns for the next 15 seconds
+    if( (millis() - lastTurnTime > 5000) && safeToTurn == 1) {
+      Serial.println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! SHUTTING DOWN SAFE TO TURN FOR 15 SEC");
+      safeToTurn = 0;
+  
+    } else if(millis() - lastTurnTime > 20000) {
+      // If it has been more than 20 seconds since our last turn, we are safe to turn again
+      Serial.println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! SAFE TO TURN AGAIN");
+      safeToTurn = 1;
+      inTheMiddleOfATurn = 0;
+    }
   }
 }
 
@@ -367,15 +387,25 @@ void calcLidar(void) {
             lidar_dist_front = lidar_dist_front << 8; // shift high byte to be high 8 bits
             lidar_dist_front |= Wire.read(); // receive low byte as lower 8 bits
             lidar_dist_front += LIDAR_CALIBRATE_DIFFERENCE;
-            // Dead reckon if sensor values are very high and not at turning point (gap) or noise
-            if( (lidar_dist_front > MAX_WALL_DISTANCE && safeToTurn == 0) || lidar_dist_front < 10 ) {
+            if(lidar_dist_front > MAX_WALL_DISTANCE) {
               gapToLeft = 1;
               if(DISPLAY_RIGHTIR_MSGS){
                 Serial.println("GAP TO LEFT - FRONT");
               }
-              lidar_dist_front = last_lidar_dist_front;
             } else {
               gapToLeft = 0;
+            }
+            
+            // Look to right sensor if there is a gap to left and we are not at turning point (gap) or noise (low vals)
+            if( (gapToLeft == 1 && safeToTurn == 0) || lidar_dist_front < 10 ) {
+              if(DISPLAY_RIGHTIR_MSGS){
+                Serial.println("LOOK TO RIGHT - FRONT");
+              }
+              lookToRight = 1;
+              Serial.println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! LOOKING TO THE RIGHT");
+//              lidar_dist_front = last_lidar_dist_front;
+            } else {
+              lookToRight = 0;
             } 
             
             last_lidar_dist_front = lidar_dist_front;
@@ -412,17 +442,6 @@ void calcLidar(void) {
             lidar_dist_back = Wire.read(); // receive high byte (overwrites previous reading)
             lidar_dist_back = lidar_dist_back << 8; // shift high byte to be high 8 bits
             lidar_dist_back |= Wire.read(); // receive low byte as lower 8 bits
-            // Dead reckon if sensor values are very high and not at turning point (gap) or noise
-            if( (lidar_dist_back > MAX_WALL_DISTANCE && safeToTurn == 0) || lidar_dist_back < 10 ) {
-              gapToLeft = 1;
-              if(DISPLAY_RIGHTIR_MSGS){
-                Serial.println("GAP TO LEFT - BACK");
-              }
-              lidar_dist_back = last_lidar_dist_back;
-            } else {
-              gapToLeft = 0;
-            } 
-
             
             last_lidar_dist_back = lidar_dist_back;
             // lidar_dist_back_avg += lidar_dist_back;
