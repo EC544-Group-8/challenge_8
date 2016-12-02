@@ -2,7 +2,6 @@ var SerialPort = require("serialport");
 var express = require('express');
 var app = express();
 var http = require('http').Server(app);
-var gpio = require('pi-gpio');
 
 var xbee_api = require('xbee-api');
 var C = xbee_api.constants;
@@ -21,39 +20,33 @@ portConfig = {
 var sp = new SerialPort.SerialPort(portName, portConfig);//*****************************************************
 
 // raspberry PI GPIO Pins
-var safe_to_turn_pin = 2;
-var start_stop_pin = 23;
+var start_stop_pin_number = 23;
+var safe_to_turn_pin_number = 18;
 
 var Gpio = require('onoff').Gpio,
-	    led = new Gpio(23, 'out');
+  start_stop_pin = new Gpio(start_stop_pin_number, 'out'),
+  safe_to_turn_pin = new Gpio(safe_to_turn_pin_number, 'out');
  
-var iv = setInterval(function(){
-		led.writeSync(led.readSync() === 0 ? 1 : 0)
-}, 500);
- 
-// Stop blinking the LED and turn it off after 5 seconds.
- setTimeout(function() {
-     clearInterval(iv); // Stop blinking
-         led.writeSync(0);  // Turn LED off.
-             led.unexport();    // Unexport GPIO and free resources
-             }, 5000);
+// Make sure the led is turned off to start
+start_stop_pin.writeSync(0);
+safe_to_turn_pin.writeSync(0);
 
-
+// Unexport GPIO and free resources on ctrl+c
+process.on('SIGINT', function () {
+ start_stop_pin.unexport();
+ safe_to_turn_pin.unexport();
+});
 
 // // functions
-// function updateSafeTurn(status) {
-//     gpio.write(safe_to_turn_pin, status, function(err) {
-//         if (err) throw err;
-//         console.log('Turning Status set to: ' + String(status));
-//     });
-// }
+function updateSafeTurn(status) {
+  safe_to_turn_pin.writeSync(status);
+  console.log('Safe to turn Status set to: ' + String(status));
+}
 
-// function updateStartStop(status) {
-//     gpio.write(start_stop_pin, status, function(err) {
-//         if (err) throw err;
-//         console.log('Turning Status set to: ' + String(status));
-//     });
-// }
+function updateStartStop(status) {
+  start_stop_pin.writeSync(status);
+  console.log('Stop start Status set to: ' + String(status));
+}
 
 
 app.use(express.static(__dirname + '/public'));
@@ -182,10 +175,10 @@ app.get('/get_location', function(req, res){
 	// Send the current bin_id back to the view
   var position = bin_history[bin_history.length - 1];
   if (position < 53 && position > 48) {
-//    updateSafeTurn(false);
+    updateSafeTurn(0);
   }
   else {
-//    updateSafeTurn(true);
+    updateSafeTurn(1);
   }
 	res.send(position);
 });

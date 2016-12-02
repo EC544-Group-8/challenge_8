@@ -167,12 +167,12 @@ void setup()
 void loop()
 {
   start_or_stop = digitalRead(remote_start_stop_pin);
-  if(start_or_stop || 1) {
+  if(start_or_stop) {
     calcFrontSonar();
     if(DISPLAY_FRONTIR_MSGS){
       Serial.println("Inches: " + String(inches));  
     }
-    while((inches > MIN_FRONT_IR_VALUE || DEBUG))// && start_or_stop ) // && motion_id == "1"
+    while((inches > MIN_FRONT_IR_VALUE || DEBUG) && start_or_stop ) // && motion_id == "1"
        {
         start_or_stop = digitalRead(remote_start_stop_pin);
         calcFrontSonar();
