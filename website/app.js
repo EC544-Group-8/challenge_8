@@ -39,7 +39,7 @@ process.on('SIGINT', function () {
 
 // // functions
 function updateSafeTurn(status) {
-  safe_to_turn_pin.writeSync(status);
+//  safe_to_turn_pin.writeSync(status);
   console.log('Safe to turn Status set to: ' + String(status));
 }
 
@@ -178,8 +178,8 @@ app.get('/get_location', function(req, res){
   var position = bin_history[bin_history.length - 1];
   console.log('beacon 4: ');
   console.log(last_beacon_data['4']);
-  if ((position < 53 && position > 47) && last_beacon_data['4'] <= 45) { // TODO Check the RSSI values in day-of conditions
-    updateSafeTurn(0);
+  if (position < 53 && position > 47) { // TODO Check the RSSI values in day-of conditions  
+  	updateSafeTurn(0);
   }
   else {
     updateSafeTurn(1);
