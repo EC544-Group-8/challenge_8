@@ -133,10 +133,12 @@ function predict(sample) {
 
 // Instantiate the beacon data array
 var beacon_data = {};
+var last_beacon_data = {};
 var bd_length = Object.keys(beacon_data).length;
 
 // Reset the beacon data after prediction made
 var resetBeaconData = function() {
+  last_beacon_data = beacon_data;
   beacon_data = {};
   bd_length = 0;
 };
@@ -174,7 +176,9 @@ XBeeAPI.on("frame_object", function(frame) {
 app.get('/get_location', function(req, res){
 	// Send the current bin_id back to the view
   var position = bin_history[bin_history.length - 1];
-  if (position < 53 && position > 47) {
+  console.log('beacon 4: ');
+  console.log(last_beacon_data['4']);
+  if ((position < 53 && position > 47) && last_beacon_data['4'] <= 45) { // TODO Check the RSSI values in day-of conditions
     updateSafeTurn(0);
   }
   else {
