@@ -17,8 +17,8 @@
 #define LIDAR_CALIBRATE_DIFFERENCE 0 //8
 #define DEBUG 0 // 1 for debug mode, 0 for no, debug will disable motor and ultrasonic blocking
 #define DISPLAY_PIDS_MSGS 1
-#define DISPLAY_FRONTIR_MSGS 1
-#define DISPLAY_RIGHTIR_MSGS 1
+#define DISPLAY_FRONTIR_MSGS 0
+#define DISPLAY_RIGHTIR_MSGS 0
 #define TRANSMIT_DELAY 20
 #define MAX_WALL_DISTANCE 140
 #define IRpin A1
@@ -54,6 +54,7 @@ int last_lidar_dist_front = 0;
 int lidar_dist_back = 0;
 int last_lidar_dist_back = 0;
 double deltaD = 0;
+unsigned long lastTurnTime = 0;
 
 // Motion ID for stop and start from node.js app
 int new_motion(String new_id); // Need forward declaration for use in "setup" loop (note, must take a string, return an int to work)
@@ -186,6 +187,7 @@ void loop()
 
         // Calculate the left wall
         calcLidar();
+        canITurn(deltaD);
         if(gapToLeft == 1) {
           if(DISPLAY_RIGHTIR_MSGS){
             Serial.println("RIGHT LOOP ");
@@ -226,7 +228,7 @@ void loop()
         wheels.write(wheels_write_value);
         //avg outputs and write them to the servo
         if(!DEBUG){
-          esc.write(75); // originally 60 as the prime value
+          esc.write(80); // originally 60 as the prime value
         }
         if(DISPLAY_PIDS_MSGS){
           Serial.println("Steeringout: " + String(steeringOut));
@@ -288,6 +290,25 @@ double radToDeg(double radians) {
   return (radians * 4068) / 71;
 }
 
+void canITurn(double delta){
+  // If the difference between the lidars is > 100, then 
+
+  if(abs(delta) > 500 && safeToTurn == 1) {
+    Serial.println("DELTA!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+    lastTurnTime = millis();
+  }
+
+  // If it has been more than 5 seconds since our last turn, don't make turns for the next 15 seconds
+  if(millis() - lastTurnTime > 5000) {
+    safeToTurn = 0;
+
+  } else if(millis() - lastTurnTime > 20000) {
+    // If it has been more than 20 seconds since our last turn, we are safe to turn again
+    safeToTurn = 1;
+  }
+}
+
+
 //Calibrate the ESC by sending a high signal, then a low, then middle
 void calibrateESC() {
     esc.write(180); // full backwards
@@ -322,7 +343,7 @@ void calcLidar(void) {
     // int n_samples = 3;
     // for(int i = 0; i < n_samples; i++){
         // ---------  THIS IS FOR THE FRONT LIDAR  -------------
-        safeToTurn = digitalRead(safe_to_turn_pin); // check in with the PI to see if we are in a turning bin
+        //safeToTurn = digitalRead(safe_to_turn_pin); // check in with the PI to see if we are in a turning bin
         digitalWrite(back_LDR_pin,LOW);
         digitalWrite(front_LDR_pin,HIGH);
         delay(5);
