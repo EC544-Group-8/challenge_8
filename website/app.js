@@ -174,7 +174,7 @@ XBeeAPI.on("frame_object", function(frame) {
 app.get('/get_location', function(req, res){
 	// Send the current bin_id back to the view
   var position = bin_history[bin_history.length - 1];
-  if (position < 53 && position > 48) {
+  if (position < 53 && position > 47) {
     updateSafeTurn(0);
   }
   else {
