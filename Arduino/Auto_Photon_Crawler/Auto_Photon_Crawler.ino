@@ -16,9 +16,9 @@
 #define MIN_FRONT_IR_VALUE 60 // 5ft original
 #define LIDAR_CALIBRATE_DIFFERENCE 0 //8
 #define DEBUG 0 // 1 for debug mode, 0 for no, debug will disable motor and ultrasonic blocking
-#define DISPLAY_PIDS_MSGS 0
+#define DISPLAY_PIDS_MSGS 1
 #define DISPLAY_FRONTIR_MSGS 1
-#define DISPLAY_RIGHTIR_MSGS 0
+#define DISPLAY_RIGHTIR_MSGS 1
 #define TRANSMIT_DELAY 20
 #define MAX_WALL_DISTANCE 140
 #define IRpin A1
@@ -239,8 +239,8 @@ void loop()
     }
     delay(100);
     esc.write(90); 
-    wheels.write(90 + (90-wheels_write_value));
-    Serial.println("stoping motors");
+    wheels.write(90);
+    Serial.println("stopping motors");
     delay(3000);
     Serial.println("backing up");
     esc.write(105);

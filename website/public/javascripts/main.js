@@ -21,21 +21,18 @@ $(document).ready(function () {
     }
 
     function start_stop_crawler(event) {
-			console.log("Start or Stop");
         $.get('/start_stop_crawler', function(data) {
 			console.log("Start or Stop");
         });
     }
 	
     function turn_left(event) {
-			console.log("Turn Left");
         $.get('/turn_left', function(data) {
 			console.log("Turn Left");
         });
     }
 
     function turn_right(event) {
-			console.log("Turn Right");
         $.get('/turn_right', function(data) {
 			console.log("Turn Right");
         });

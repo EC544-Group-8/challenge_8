@@ -185,6 +185,7 @@ app.get('/get_location', function(req, res){
 
 // For starting/stopping
 app.get('/start_stop_crawler', function(req, res){
+  updateStartStop(start_stop_pin.readSync() === 0 ? 1 : 0); //TODO! 
 	res.send("1");
 
 });
