@@ -387,6 +387,12 @@ void calcLidar(void) {
             lidar_dist_front = lidar_dist_front << 8; // shift high byte to be high 8 bits
             lidar_dist_front |= Wire.read(); // receive low byte as lower 8 bits
             lidar_dist_front += LIDAR_CALIBRATE_DIFFERENCE;
+            
+            // handle noise in lidar
+            if(lidar_dist_front < 10) {
+              lidar_dist_front = last_lidar_dist_front;
+            }
+            
             if(lidar_dist_front > MAX_WALL_DISTANCE) {
               gapToLeft = 1;
               if(DISPLAY_RIGHTIR_MSGS){
@@ -396,8 +402,8 @@ void calcLidar(void) {
               gapToLeft = 0;
             }
             
-            // Look to right sensor if there is a gap to left and we are not at turning point (gap) or noise (low vals)
-            if( (gapToLeft == 1 && safeToTurn == 0) || lidar_dist_front < 10 ) {
+            // Look to right sensor if there is a gap to left and we are not at turning point (gap)
+            if( (gapToLeft == 1 && safeToTurn == 0)) {
               if(DISPLAY_RIGHTIR_MSGS){
                 Serial.println("LOOK TO RIGHT - FRONT");
               }
@@ -442,6 +448,11 @@ void calcLidar(void) {
             lidar_dist_back = Wire.read(); // receive high byte (overwrites previous reading)
             lidar_dist_back = lidar_dist_back << 8; // shift high byte to be high 8 bits
             lidar_dist_back |= Wire.read(); // receive low byte as lower 8 bits
+
+            // handle noise in lidar
+            if(lidar_dist_back < 10) {
+              lidar_dist_back = last_lidar_dist_back;
+            }
             
             last_lidar_dist_back = lidar_dist_back;
             // lidar_dist_back_avg += lidar_dist_back;
