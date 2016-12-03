@@ -20,7 +20,7 @@
 #define DISPLAY_FRONTIR_MSGS 0
 #define DISPLAY_RIGHTIR_MSGS 0
 #define TRANSMIT_DELAY 20
-#define MAX_WALL_DISTANCE 250
+#define MAX_WALL_DISTANCE 180
 #define IRpin A1
 #define IR_Sensor_Loop 5
 #define TRIGGER_PIN  12
@@ -231,7 +231,7 @@ void loop()
         wheels.write(wheels_write_value);
         //avg outputs and write them to the servo
         if(!DEBUG){
-          esc.write(75); // originally 60 as the prime value
+          esc.write(70); // originally 60 as the prime value
         }
         if(DISPLAY_PIDS_MSGS){
           Serial.println("Steeringout: " + String(steeringOut));
@@ -251,7 +251,7 @@ void loop()
     }
     wheels.write(85);
     Serial.println("stopping motors");
-    delay(3000);
+    delay(500);
     Serial.println("backing up");
     esc.write(105);
     delay(2000);
@@ -331,11 +331,11 @@ void canITurn(double delta){
     Serial.println("time since last turn: ");
     Serial.print((millis() - lastTurnTime));
     // If it has been more than 5 seconds since our last turn, don't make turns for the next 15 seconds
-    if( (millis() - lastTurnTime > 5000) && safeToTurn == 1) {
+    if( (millis() - lastTurnTime > 3500) && safeToTurn == 1) {
       Serial.println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! SHUTTING DOWN SAFE TO TURN FOR 15 SEC");
       safeToTurn = 0;
   
-    } else if(millis() - lastTurnTime > 13000) {
+    } else if(millis() - lastTurnTime > 10000) {
       // If it has been more than 20 seconds since our last turn, we are safe to turn again
       Serial.println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! SAFE TO TURN AGAIN");
       safeToTurn = 1;
