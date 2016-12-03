@@ -20,7 +20,7 @@
 #define DISPLAY_FRONTIR_MSGS 0
 #define DISPLAY_RIGHTIR_MSGS 0
 #define TRANSMIT_DELAY 20
-#define MAX_WALL_DISTANCE 140
+#define MAX_WALL_DISTANCE 250
 #define IRpin A1
 #define IR_Sensor_Loop 5
 #define TRIGGER_PIN  12
@@ -111,6 +111,7 @@ int safeToTurn = 1;
 int lookToRight = 0;
 int gapToLeft = 0;
 int inTheMiddleOfATurn = 0;
+int first_delta = 0;
 int start_or_stop = 0;
 int left = 0;
 int right = 0;
@@ -241,9 +242,14 @@ void loop()
           delay(1000);
         }
     }
+    
     delay(100);
     esc.write(90); 
-    wheels.write(90);
+    unsigned long stop_difference;
+    if(inTheMiddleOfATurn == 1) {
+      stop_difference = (millis() - lastTurnTime);
+    }
+    wheels.write(85);
     Serial.println("stopping motors");
     delay(3000);
     Serial.println("backing up");
@@ -251,9 +257,9 @@ void loop()
     delay(2000);
     Serial.println("return to previous state...");
     if(inTheMiddleOfATurn == 1) {
-      lastTurnTime = millis();
+      lastTurnTime = (millis() - stop_difference);
     }
-    wheels.write(wheels_write_value);
+    wheels.write(130);
     esc.write(75);
     delay(1000);
     
@@ -304,22 +310,32 @@ void canITurn(double delta){
   // If not in the middle of a turn
   if(inTheMiddleOfATurn == 0) {
     // If we see a big gap, and it is safe to rutn
-    if(abs(delta) > 500 && safeToTurn == 1) {
-      Serial.println("DELTA!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! STARTING TURN");
-      lastTurnTime = millis();
-      // start the turn
-      inTheMiddleOfATurn = 1;
+    if((abs(delta) > 100 && safeToTurn == 1) || (first_delta > 0 && (lidar_dist_front > 150) && safeToTurn == 1) ) {
+      if(first_delta < 2) {
+        Serial.println("1st DELTA!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+        first_delta += 1; // this is our first big delta
+      } else  {
+        Serial.println("1st DELTA AND GAP LEFT !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! STARTING TURN");
+        lastTurnTime = millis();
+        // start the turn
+        inTheMiddleOfATurn = 1;
+        first_delta = 0; // reset
+      } 
+    } else {
+      first_delta = 0; // reset
     }
   }
 
   // if in the middle of a turn
   if(inTheMiddleOfATurn == 1) {
+    Serial.println("time since last turn: ");
+    Serial.print((millis() - lastTurnTime));
     // If it has been more than 5 seconds since our last turn, don't make turns for the next 15 seconds
     if( (millis() - lastTurnTime > 5000) && safeToTurn == 1) {
       Serial.println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! SHUTTING DOWN SAFE TO TURN FOR 15 SEC");
       safeToTurn = 0;
   
-    } else if(millis() - lastTurnTime > 20000) {
+    } else if(millis() - lastTurnTime > 13000) {
       // If it has been more than 20 seconds since our last turn, we are safe to turn again
       Serial.println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! SAFE TO TURN AGAIN");
       safeToTurn = 1;
@@ -389,7 +405,7 @@ void calcLidar(void) {
             lidar_dist_front += LIDAR_CALIBRATE_DIFFERENCE;
             
             // handle noise in lidar
-            if(lidar_dist_front < 10) {
+            if(lidar_dist_front < 10 || lidar_dist_front > 1500) {
               lidar_dist_front = last_lidar_dist_front;
             }
             
@@ -450,7 +466,7 @@ void calcLidar(void) {
             lidar_dist_back |= Wire.read(); // receive low byte as lower 8 bits
 
             // handle noise in lidar
-            if(lidar_dist_back < 10) {
+            if(lidar_dist_back < 10 || lidar_dist_back > 1500) {
               lidar_dist_back = last_lidar_dist_back;
             }
             
