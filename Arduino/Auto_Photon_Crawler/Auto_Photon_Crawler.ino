@@ -196,7 +196,7 @@ void loop()
         
         canITurn(deltaD);
         
-        if(lookToRight == 1) {
+        if(byWindows == 1) {
           if(DISPLAY_RIGHTIR_MSGS){
             Serial.println("RIGHT LOOP ");
           }
@@ -511,7 +511,7 @@ void calcLidar(void) {
     }
 
   // LED
-  if(safeToTurn){
+  if(lookToRight){
     digitalWrite(led_pin, HIGH);
   } else {
     digitalWrite(led_pin, LOW);
