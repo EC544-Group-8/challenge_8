@@ -31,6 +31,7 @@
 #define remote_start_stop_pin 6
 #define remote_left_pin 7
 #define remote_right_pin 8
+#define led_pin 8
 
 bool startup = true;        // used to ensure startup only happens once
 int startupDelay = 1000;    // time to pause at each calibration step
@@ -108,6 +109,7 @@ NewPing sonar(TRIGGER_PIN, ECHO_PIN, MAX_DISTANCE);
 
 // communicating with PI
 int safeToTurn = 1;
+int byWindows = 1;
 int lookToRight = 0;
 int gapToLeft = 0;
 int inTheMiddleOfATurn = 0;
@@ -140,6 +142,7 @@ void setup()
   Wire.begin();
   pinMode(back_LDR_pin,OUTPUT);
   pinMode(front_LDR_pin,OUTPUT);
+  pinMode(led_pin, OUTPUT);
 
   // Initialize PIDs
   // Keep Crawler going Straight ahead
@@ -190,7 +193,9 @@ void loop()
 
         // Calculate the left wall
         calcLidar();
+        
         canITurn(deltaD);
+        
         if(lookToRight == 1) {
           if(DISPLAY_RIGHTIR_MSGS){
             Serial.println("RIGHT LOOP ");
@@ -380,7 +385,7 @@ void calcLidar(void) {
     // int n_samples = 3;
     // for(int i = 0; i < n_samples; i++){
         // ---------  THIS IS FOR THE FRONT LIDAR  -------------
-        //safeToTurn = digitalRead(safe_to_turn_pin); // check in with the PI to see if we are in a turning bin
+        byWindows = digitalRead(safe_to_turn_pin); // check in with the PI to see if we are in a turning bin
         digitalWrite(back_LDR_pin,LOW);
         digitalWrite(front_LDR_pin,HIGH);
         delay(5);
@@ -420,7 +425,7 @@ void calcLidar(void) {
             }
             
             // Look to right sensor if there is a gap to left and we are not at turning point (gap)
-            if( (/*gapToLeft == 1 &&*/ safeToTurn == 0)) {
+            if(!byWindows && !safeToTurn) {
               if(DISPLAY_RIGHTIR_MSGS){
                 Serial.println("LOOK TO RIGHT - FRONT");
               }
@@ -504,6 +509,13 @@ void calcLidar(void) {
     if(DISPLAY_PIDS_MSGS){
       Serial.println("DELTA: " + String(deltaD));
     }
+
+  // LED
+  if(safeToTurn){
+    digitalWrite(led_pin, HIGH);
+  } else {
+    digitalWrite(led_pin, LOW);
+  }
   // Print serial deltaD here 
     // }
 }
