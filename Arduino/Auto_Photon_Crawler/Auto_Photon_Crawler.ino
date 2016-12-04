@@ -93,9 +93,9 @@ double distOfRightWall;
 double dKp = 0.7,dKi= 0.0,dKd = 0.04;
 PID driftPID(&distOfLeftWall, &driftOut, & driftSetPos,
               dKp,dKi,dKd,DIRECT);
-
+double dKpR = 2.0;
 PID driftRightPID(&distOfRightWall, &driftOut, & driftRightSetPos,
-              dKp,dKi,dKd,DIRECT);
+              dKpR,dKi,dKd,DIRECT);
 
 
 // IR Sensors
@@ -259,8 +259,8 @@ void loop()
     if(inTheMiddleOfATurn == 1) {
       lastTurnTime = (millis() - stop_difference);
     }
-    wheels.write(130);
-    esc.write(75);
+    wheels.write(135);
+    esc.write(70);
     delay(1000);
     
   }
@@ -331,11 +331,11 @@ void canITurn(double delta){
     Serial.println("time since last turn: ");
     Serial.print((millis() - lastTurnTime));
     // If it has been more than 5 seconds since our last turn, don't make turns for the next 15 seconds
-    if( (millis() - lastTurnTime > 3500) && safeToTurn == 1) {
+    if( (millis() - lastTurnTime > 2500) && safeToTurn == 1) {
       Serial.println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! SHUTTING DOWN SAFE TO TURN FOR 15 SEC");
       safeToTurn = 0;
   
-    } else if(millis() - lastTurnTime > 10000) {
+    } else if(millis() - lastTurnTime > 9000) {
       // If it has been more than 20 seconds since our last turn, we are safe to turn again
       Serial.println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! SAFE TO TURN AGAIN");
       safeToTurn = 1;
