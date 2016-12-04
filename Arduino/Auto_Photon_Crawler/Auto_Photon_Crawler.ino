@@ -18,7 +18,7 @@
 #define DEBUG 0 // 1 for debug mode, 0 for no, debug will disable motor and ultrasonic blocking
 #define DISPLAY_PIDS_MSGS 1
 #define DISPLAY_FRONTIR_MSGS 0
-#define DISPLAY_RIGHTIR_MSGS 0
+#define DISPLAY_RIGHTIR_MSGS 1
 #define TRANSMIT_DELAY 20
 #define MAX_WALL_DISTANCE 180
 #define IRpin A1
@@ -85,7 +85,7 @@ double distOfLeftWall;
 double driftOut;
 double driftSetPos = 100;   // upstairs
 // double driftSetPos = 70; // UAV LAB
-double driftRightSetPos = 80;
+double driftRightSetPos = 40;
 double distOfRightWall;
 
 // 0.7 0 0      (Saved Values for different speeds)
@@ -93,7 +93,7 @@ double distOfRightWall;
 double dKp = 0.7,dKi= 0.0,dKd = 0.04;
 PID driftPID(&distOfLeftWall, &driftOut, & driftSetPos,
               dKp,dKi,dKd,DIRECT);
-double dKpR = 2.0;
+double dKpR = 4.0;
 PID driftRightPID(&distOfRightWall, &driftOut, & driftRightSetPos,
               dKpR,dKi,dKd,DIRECT);
 
@@ -256,12 +256,13 @@ void loop()
     esc.write(105);
     delay(2000);
     Serial.println("return to previous state...");
-    if(inTheMiddleOfATurn == 1) {
-      lastTurnTime = (millis() - stop_difference);
-    }
+
     wheels.write(135);
     esc.write(70);
     delay(1000);
+    if(inTheMiddleOfATurn == 1) {
+      lastTurnTime = (millis() - stop_difference);
+    }
     
   }
 }
@@ -328,8 +329,8 @@ void canITurn(double delta){
 
   // if in the middle of a turn
   if(inTheMiddleOfATurn == 1) {
-    Serial.println("time since last turn: ");
-    Serial.print((millis() - lastTurnTime));
+    Serial.print("time since last turn: ");
+    Serial.println((millis() - lastTurnTime));
     // If it has been more than 5 seconds since our last turn, don't make turns for the next 15 seconds
     if( (millis() - lastTurnTime > 2500) && safeToTurn == 1) {
       Serial.println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! SHUTTING DOWN SAFE TO TURN FOR 15 SEC");
@@ -419,12 +420,14 @@ void calcLidar(void) {
             }
             
             // Look to right sensor if there is a gap to left and we are not at turning point (gap)
-            if( (gapToLeft == 1 && safeToTurn == 0)) {
+            if( (/*gapToLeft == 1 &&*/ safeToTurn == 0)) {
               if(DISPLAY_RIGHTIR_MSGS){
                 Serial.println("LOOK TO RIGHT - FRONT");
               }
               lookToRight = 1;
               Serial.println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! LOOKING TO THE RIGHT");
+              Serial.print("RIGHT IR VALUE: ");
+              Serial.println(distOfRightWall);
 //              lidar_dist_front = last_lidar_dist_front;
             } else {
               lookToRight = 0;
@@ -468,6 +471,11 @@ void calcLidar(void) {
             // handle noise in lidar
             if(lidar_dist_back < 10 || lidar_dist_back > 1500) {
               lidar_dist_back = last_lidar_dist_back;
+            }
+
+            if(abs(lidar_dist_front - lidar_dist_back) < 75 && (lidar_dist_front < 150 && lidar_dist_back < 150)){
+              Serial.println("SAFE TO USE LEFT AFTER ALL~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
+              lookToRight = 0;
             }
             
             last_lidar_dist_back = lidar_dist_back;
