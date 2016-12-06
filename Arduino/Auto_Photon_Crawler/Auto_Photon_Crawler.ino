@@ -185,7 +185,7 @@ void loop()
       Serial.print("FRONT READING: ");  
       Serial.println(inches);
     }
-    while((inches > MIN_FRONT_IR_VALUE || DEBUG)) //&& start_or_stop ) // && motion_id == "1"
+    while((inches > MIN_FRONT_IR_VALUE || DEBUG) && start_or_stop ) // && motion_id == "1"
        {
         start_or_stop = digitalRead(remote_start_stop_pin);
         calcFrontSonar();
@@ -260,21 +260,24 @@ void loop()
     if(inTheMiddleOfATurn == 1) {
       stop_difference = (millis() - lastTurnTime);
     }
-    wheels.write(85);
-    Serial.println("stopping motors");
-    delay(500);
-    Serial.println("backing up");
-    esc.write(105);
-    delay(2000);
-    Serial.println("return to previous state...");
-
-    wheels.write(135);
-    esc.write(70);
-    delay(1000);
-    if(inTheMiddleOfATurn == 1) {
-      lastTurnTime = (millis() - stop_difference);
+    if(start_or_stop) {
+      wheels.write(85);
+      Serial.println("stopping motors");
+      delay(500);
+      Serial.println("backing up");
+      esc.write(105);
+      delay(2000);
+      Serial.println("return to previous state...");
+  
+      wheels.write(135);
+      esc.write(70);
+      delay(1000);
+      if(inTheMiddleOfATurn == 1) {
+        lastTurnTime = (millis() - stop_difference);
+      }
+    } else {
+      // Do nothing
     }
-    
   }
 }
 
@@ -519,7 +522,7 @@ void calcLidar(void) {
     }
 
   // LEDCHANGE
-  if(start_or_stop){
+  if(lookToRight){
     digitalWrite(led_pin, HIGH);
   } else {
     digitalWrite(led_pin, LOW);
