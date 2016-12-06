@@ -21,7 +21,7 @@ var sp = new SerialPort.SerialPort(portName, portConfig);//*********************
 
 // raspberry PI GPIO Pins
 var start_stop_pin_number = 23;
-var safe_to_turn_pin_number = 18;
+var safe_to_turn_pin_number = 17;
 
 var Gpio = require('onoff').Gpio,
   start_stop_pin = new Gpio(start_stop_pin_number, 'out'),
@@ -33,13 +33,13 @@ safe_to_turn_pin.writeSync(0);
 
 // Unexport GPIO and free resources on ctrl+c
 process.on('SIGINT', function () {
- start_stop_pin.unexport();
- safe_to_turn_pin.unexport();
+ // start_stop_pin.unexport();
+ // safe_to_turn_pin.unexport();
 });
 
 // // functions
 function updateSafeTurn(status) {
-//  safe_to_turn_pin.writeSync(status);
+  safe_to_turn_pin.writeSync(status);
   console.log('Safe to turn Status set to: ' + String(status));
 }
 
@@ -178,18 +178,20 @@ app.get('/get_location', function(req, res){
   var position = bin_history[bin_history.length - 1];
   console.log('beacon 4: ');
   console.log(last_beacon_data['4']);
-  if (position < 53 && position > 47) { // TODO Check the RSSI values in day-of conditions  
-  	updateSafeTurn(0);
+  if (position <= 33 && position >= 9) { // TODO Check the RSSI values in day-of conditions  
+	  console.log('UPDATING PIN!!!!!!!!');
+  	 updateSafeTurn(1);
   }
   else {
-    updateSafeTurn(1);
+	  console.log('UPDATING PIN!!!!!!!!');
+	 updateSafeTurn(0);
   }
 	res.send(position);
 });
 
 // For starting/stopping
 app.get('/start_stop_crawler', function(req, res){
-  updateStartStop(start_stop_pin.readSync() === 0 ? 1 : 0); //TODO! 
+  updateStartStop(start_stop_pin.readSync() === 0 ? 1 : 0);
 	res.send("1");
 
 });
