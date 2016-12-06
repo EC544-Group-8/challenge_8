@@ -4,6 +4,9 @@ $(document).ready(function () {
     var floor_plan = $("#floor_plan");
     var updateInterval = 1000;
     var fake_bin_id = 0;
+	var start_stop_btn = $("#start_stop");
+	var left_btn = $("#left");
+	var right_btn = $("#right");
 
     // Function to change the location
     function update_location(event) {
@@ -17,8 +20,29 @@ $(document).ready(function () {
         });
     }
 
+    function start_stop_crawler(event) {
+        $.get('/start_stop_crawler', function(data) {
+			console.log("Start or Stop");
+        });
+    }
+	
+    function turn_left(event) {
+        $.get('/turn_left', function(data) {
+			console.log("Turn Left");
+        });
+    }
+
+    function turn_right(event) {
+        $.get('/turn_right', function(data) {
+			console.log("Turn Right");
+        });
+    }
+
     // update location after specified time. 
     setInterval(function(){update_location();}, updateInterval);
 
+	start_stop_btn.click(start_stop_crawler);
+	left_btn.click(turn_left);
+	right_btn.click(turn_right);
 
 });

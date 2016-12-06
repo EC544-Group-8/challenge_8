@@ -8,8 +8,20 @@
   <body class="container">
     <main>
       <div>
-        <img id= "floor_plan" src="/images/fourthfloor.png">
+		  <h2 style="float:top, align:center">
+			  Current Location
+		  </h2>
+        <img style="float:left" id="floor_plan" src="/images/bin.png">
       </div>
+	  <div id="webcam">
+		  <h2 style="float:top, align:center">
+			  First-Person View
+		  </h2>
+		  <iframe width="640" style="float:left" height="480" frameBorder="0"  src="http://ec544group8.hopto.org:54321"></iframe>
+	  </div>
+	  <button id="start_stop" class="btn btn-start-stop">Start/Stop</button>
+	  <button style="align:bottom, float:bottom" id="left" class="btn btn-left">Left</button>
+	  <button style="align:bottom, float:bottom" id="right" class="btn btn-right">Right</button>
     </main>
     <script src="http://code.jquery.com/jquery-1.11.1.js"></script>  
     <!--script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script-->  

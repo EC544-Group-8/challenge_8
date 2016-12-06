@@ -80,7 +80,7 @@ s.send('This is MatLab');
 %==========================================================================
 Hist_Q = Queue();
 original_max_pos_error = 2 % change this to tune algorithm
-max_pos_error = original_max_pos_error
+max_pos_error = original_max_pos_error;
 max_tries = 3;
 while(1)
     % if queue is not empty

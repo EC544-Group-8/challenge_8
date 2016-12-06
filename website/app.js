@@ -3,13 +3,6 @@ var express = require('express');
 var app = express();
 var http = require('http').Server(app);
 
-// portConfig = {
-// 	baudRate: 9600,
-// 	parser: SerialPort.parsers.readline("\n")
-// };
-
-// ---- Brought over from "/matlab/RSSI_SERVER.js" ---- //
-var client = require('./client');
 var xbee_api = require('xbee-api');
 var C = xbee_api.constants;
 var XBeeAPI = new xbee_api.XBeeAPI({
@@ -19,19 +12,42 @@ var XBeeAPI = new xbee_api.XBeeAPI({
 var portName = process.argv[2];//******************************************************************************
 //Note that with the XBeeAPI parser, the serialport's "data" event will not fire when messages are received!
 portConfig = {
-    baudRate: 9600,
+    baudRate: 57600,
     parser: XBeeAPI.rawParser()
 
 };
 
 var sp = new SerialPort.SerialPort(portName, portConfig);//*****************************************************
 
-var host='localhost';
-var port=5000;
-var c = new client(host, port);
+// raspberry PI GPIO Pins
+var start_stop_pin_number = 23;
+var safe_to_turn_pin_number = 17;
 
-// Begin the function that handles the receipt of data from Matlab, and adds it to a queue
-c.receive();
+var Gpio = require('onoff').Gpio,
+  start_stop_pin = new Gpio(start_stop_pin_number, 'out'),
+  safe_to_turn_pin = new Gpio(safe_to_turn_pin_number, 'out');
+ 
+// Make sure the led is turned off to start
+start_stop_pin.writeSync(0);
+safe_to_turn_pin.writeSync(0);
+
+// Unexport GPIO and free resources on ctrl+c
+process.on('SIGINT', function () {
+ // start_stop_pin.unexport();
+ // safe_to_turn_pin.unexport();
+});
+
+// // functions
+function updateSafeTurn(status) {
+  safe_to_turn_pin.writeSync(status);
+  console.log('Safe to turn Status set to: ' + String(status));
+}
+
+function updateStartStop(status) {
+  start_stop_pin.writeSync(status);
+  console.log('Stop start Status set to: ' + String(status));
+}
+
 
 app.use(express.static(__dirname + '/public'));
 
@@ -62,7 +78,7 @@ var requestRSSI = function(){
 };
 
 
-var sampleDelay = 3000;
+var sampleDelay = 2500;
 // Every "sampleDelay" seconds, gather new RSSI values********************************************************
 sp.on("open", function () {
   console.log('open');
@@ -72,22 +88,62 @@ sp.on("open", function () {
 
 // ------------ END - SEND RSSI REQUEST FROM COORDINATOR ------------ //
 
+// global variables
+var fs = require('fs');
+var parse = require('csv-parse');
+var csvData=[];
+var bin_history = [];
 
+// read the file and save to global variable
+fs.createReadStream('DB_AVG.txt')
+    .pipe(parse({delimiter: ','}))
+    .on('data', function(csvrow) {
+        csvData.push(csvrow);
+        //console.log(csvrow);
+    });
+
+
+// predict the nth neighbors
+function predict(sample) {
+    var delta = {};
+    var nbr = -1;
+    // loop through the matrix
+    for (i = 0; i < csvData.length; i++) {
+        var sum = 0;
+        for(j = 1; j < csvData[0].length; j++) {
+            sum += Math.pow(parseFloat(csvData[i][j])-sample[j-1],2);
+        }
+        // push to data container
+        delta[parseFloat(csvData[i][0])] = Math.sqrt(sum);
+    }
+    // find the minimum value
+    var min = 1000;
+    for(var key in delta) {
+        if (delta[key] < min) {
+            min = delta[key];
+            nbr = key;
+        }
+    }
+    console.log(nbr);
+    return nbr;
+}
 
 
 // --------- BEGIN - HANDLE RSSI VALUES FROM THE NODES ---------- //
 
 // Instantiate the beacon data array
 var beacon_data = {};
+var last_beacon_data = {};
 var bd_length = Object.keys(beacon_data).length;
 
-// Reset the beacon data after sent to matlab
+// Reset the beacon data after prediction made
 var resetBeaconData = function() {
+  last_beacon_data = beacon_data;
   beacon_data = {};
   bd_length = 0;
 };
 
-// When the Coordinator Xbee receives the RSSI values, gather them, and send them to matlab
+// When the Coordinator Xbee receives the RSSI values, gather them, and make the bin prediction
 XBeeAPI.on("frame_object", function(frame) {
   if (frame.type == 144){
     console.log("Beacon ID: " + frame.data[1] + ", RSSI: " + (frame.data[0]));
@@ -96,16 +152,17 @@ XBeeAPI.on("frame_object", function(frame) {
     console.log(bd_length);
 
     if(bd_length >= 4){
-      // Send to Matlab
-      var data_to_send = beacon_data['1'] + ',' + beacon_data['2'] + ',' +beacon_data['3'] + ',' +beacon_data['4'];
-      c.send(data_to_send);
+      var data_to_send = [beacon_data['1'], beacon_data['2'], beacon_data['3'], beacon_data['4']];
+      // Predict the bin based off the data
+      var pos_prediction = predict(data_to_send);
+      bin_history.push(pos_prediction);
+
       // Reset beacon data
       resetBeaconData();
     }
   }
 });
 
-//setInterval(function(){c.send('59,60,62,74'); /*console.log('sent');*/},3000);
 
 // ------------ END - HANDLE RSSI VALUES FROM THE NODES ------------ //
 
@@ -118,11 +175,35 @@ XBeeAPI.on("frame_object", function(frame) {
 // For getting the most recent location of the moving device
 app.get('/get_location', function(req, res){
 	// Send the current bin_id back to the view
-	res.send(c.queue[c.queue.length - 1]);
+  var position = bin_history[bin_history.length - 1];
+  console.log('beacon 4: ');
+  console.log(last_beacon_data['4']);
+  if (position <= 33 && position >= 9) { // TODO Check the RSSI values in day-of conditions  
+	  console.log('UPDATING PIN!!!!!!!!');
+  	 updateSafeTurn(1);
+  }
+  else {
+	  console.log('UPDATING PIN!!!!!!!!');
+	 updateSafeTurn(0);
+  }
+	res.send(position);
 });
 
-// setInterval(function(){c.send('[52,65,75,65]'); console.log('data sent');},5000);   // 7
-// setInterval(function(){c.send('[30,40,50,60]'); console.log('data sent');},6000);   // 9
-// setInterval(function(){c.send('[60,51,66,81]'); console.log('data sent');},7000);   // 13
-// setInterval(function(){c.send('[60,51,66,81]'); console.log('data sent');},8000);   // 13
-// setInterval(function(){c.send('[60,51,66,81]'); console.log('data sent');},9000);   // 13
+// For starting/stopping
+app.get('/start_stop_crawler', function(req, res){
+  updateStartStop(start_stop_pin.readSync() === 0 ? 1 : 0);
+	res.send("1");
+
+});
+
+// For going left
+app.get('/turn_left', function(req, res){
+	res.send("1");
+
+});
+
+// For going right
+app.get('/turn_right', function(req, res){
+	res.send("1");
+});
+
