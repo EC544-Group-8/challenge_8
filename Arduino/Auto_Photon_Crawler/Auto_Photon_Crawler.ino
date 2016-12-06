@@ -13,12 +13,12 @@
 //================================================
 //                     Globals
 //================================================ 
-#define MIN_FRONT_IR_VALUE 60 // 5ft original
+#define MIN_FRONT_IR_VALUE 70 // 5ft original
 #define LIDAR_CALIBRATE_DIFFERENCE 0 //8
 #define DEBUG 0 // 1 for debug mode, 0 for no, debug will disable motor and ultrasonic blocking
 #define DISPLAY_PIDS_MSGS 1
-#define DISPLAY_FRONTIR_MSGS 0
-#define DISPLAY_RIGHTIR_MSGS 1
+#define DISPLAY_FRONTIR_MSGS 1
+#define DISPLAY_RIGHTIR_MSGS 0
 #define TRANSMIT_DELAY 20
 #define MAX_WALL_DISTANCE 180
 #define IRpin A1
@@ -174,10 +174,16 @@ void setup()
 void loop()
 {
   start_or_stop = digitalRead(remote_start_stop_pin);
-  if(start_or_stop || 1) {
+  if(start_or_stop) {
+    Serial.println("START START !!! START START");
+  } else {
+    Serial.println("STOP STOP !!! STOP STOP");
+  }
+  if(start_or_stop) {
     calcFrontSonar();
     if(DISPLAY_FRONTIR_MSGS){
-      Serial.println("Inches: " + String(inches));  
+      Serial.print("FRONT READING: ");  
+      Serial.println(inches);
     }
     while((inches > MIN_FRONT_IR_VALUE || DEBUG)) //&& start_or_stop ) // && motion_id == "1"
        {
@@ -196,9 +202,9 @@ void loop()
         
         canITurn(deltaD);
         
-        if(byWindows == 1) {
+        if(lookToRight == 1) {
           if(DISPLAY_RIGHTIR_MSGS){
-            Serial.println("RIGHT LOOP ");
+            Serial.println("LOOKING RIGHT ");
           }
           driftRightPIDloop();
           wheels_write_value = 90+driftOut; // The drift out value is opposite of left side
@@ -311,7 +317,9 @@ double radToDeg(double radians) {
 void canITurn(double delta){
   // If the difference between the lidars is > 100, then 
   Serial.println("CAN I TURN");
+  Serial.print("DELTA IS: ");
   Serial.println(delta);
+  Serial.print("SAFE TO TURN IS: ");
   Serial.println(safeToTurn);
   // If not in the middle of a turn
   if(inTheMiddleOfATurn == 0) {
@@ -440,10 +448,10 @@ void calcLidar(void) {
             
             last_lidar_dist_front = lidar_dist_front;
             // lidar_dist_front_avg += lidar_dist_front;
-            String debug1 = "FRONT LIDAR...";
-            debug1.concat(String(lidar_dist_front));
+            String debug1 = "FRONT LIDAR... ";
             if(DISPLAY_PIDS_MSGS){
-              Serial.println(debug1);
+              Serial.print(debug1);
+              Serial.println(lidar_dist_front);
             }
             
         }
@@ -478,17 +486,17 @@ void calcLidar(void) {
               lidar_dist_back = last_lidar_dist_back;
             }
 
-            if(abs(lidar_dist_front - lidar_dist_back) < 75 && (lidar_dist_front < 150 && lidar_dist_back < 150)){
+            if(lookToRight == 1 && abs(lidar_dist_front - lidar_dist_back) < 75 && (lidar_dist_front < 150 && lidar_dist_back < 150)){
               Serial.println("SAFE TO USE LEFT AFTER ALL~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
               lookToRight = 0;
             }
             
             last_lidar_dist_back = lidar_dist_back;
             // lidar_dist_back_avg += lidar_dist_back;
-            String debug2 = "BACK LIDAR...";
-            debug2.concat(String(lidar_dist_back));
+            String debug2 = "BACK LIDAR... ";
             if(DISPLAY_PIDS_MSGS){
-              Serial.println(debug2);
+              Serial.print(debug2);
+              Serial.println(lidar_dist_back);
             }
             //delay(1000);
             // Particle.publish("DEBUG",String(lidar_dist_back));
@@ -510,8 +518,8 @@ void calcLidar(void) {
       Serial.println("DELTA: " + String(deltaD));
     }
 
-  // LED
-  if(lookToRight){
+  // LEDCHANGE
+  if(start_or_stop){
     digitalWrite(led_pin, HIGH);
   } else {
     digitalWrite(led_pin, LOW);
