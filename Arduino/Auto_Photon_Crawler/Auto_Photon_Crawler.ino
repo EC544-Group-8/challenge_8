@@ -29,9 +29,8 @@
 
 #define safe_to_turn_pin 5
 #define remote_start_stop_pin 6
-#define remote_left_pin 7
-#define remote_right_pin 8
-#define led_pin 8
+#define remote_look_right_pin 7
+#define led_pin 9
 
 bool startup = true;        // used to ensure startup only happens once
 int startupDelay = 1000;    // time to pause at each calibration step
@@ -94,7 +93,7 @@ double distOfRightWall;
 double dKp = 0.7,dKi= 0.0,dKd = 0.04;
 PID driftPID(&distOfLeftWall, &driftOut, & driftSetPos,
               dKp,dKi,dKd,DIRECT);
-double dKpR = 4.0;
+double dKpR = 2.0;
 PID driftRightPID(&distOfRightWall, &driftOut, & driftRightSetPos,
               dKpR,dKi,dKd,DIRECT);
 
@@ -115,6 +114,7 @@ int gapToLeft = 0;
 int inTheMiddleOfATurn = 0;
 int first_delta = 0;
 int start_or_stop = 0;
+int lookRightSignal = 0;
 int left = 0;
 int right = 0;
 
@@ -163,9 +163,16 @@ void setup()
   // raspberry pi communication pins
   pinMode(safe_to_turn_pin,INPUT);
   pinMode(remote_start_stop_pin,INPUT);
-  pinMode(remote_left_pin,INPUT);
-  pinMode(remote_right_pin,INPUT);
+  pinMode(remote_look_right_pin,INPUT);
+}
 
+void changeLED(bool ledSignal) {
+      // LEDCHANGE
+  if(ledSignal){
+    digitalWrite(led_pin, HIGH);
+  } else {
+    digitalWrite(led_pin, LOW);
+  }
 }
 
 //================================================
@@ -174,6 +181,15 @@ void setup()
 void loop()
 {
   start_or_stop = digitalRead(remote_start_stop_pin);
+  Serial.print("READING START_STOP AS: ");
+  Serial.println(start_or_stop);
+  lookRightSignal = digitalRead(remote_look_right_pin);
+  changeLED(lookRightSignal || lookToRight);
+  Serial.print("READING LOOK RIGHT AS: ");
+  Serial.println(lookRightSignal);
+
+
+  
   if(start_or_stop) {
     Serial.println("START START !!! START START");
   } else {
@@ -202,7 +218,11 @@ void loop()
         
         canITurn(deltaD);
         
-        if(lookToRight == 1) {
+        lookRightSignal = digitalRead(remote_look_right_pin);
+        changeLED(lookRightSignal);
+
+
+        if(lookToRight == 1 || lookRightSignal == 1) {
           if(DISPLAY_RIGHTIR_MSGS){
             Serial.println("LOOKING RIGHT ");
           }
@@ -265,14 +285,21 @@ void loop()
       Serial.println("stopping motors");
       delay(500);
       Serial.println("backing up");
-      esc.write(105);
-      delay(2000);
+      if(start_or_stop) {
+        esc.write(105);
+        delay(2000);
+      }
       Serial.println("return to previous state...");
-  
-      wheels.write(135);
-      esc.write(70);
-      delay(1000);
-      if(inTheMiddleOfATurn == 1) {
+      if(start_or_stop) {
+        if(!lookRightSignal)
+          wheels.write(135);
+        else
+          wheels.write(45);
+          
+        esc.write(70);
+        delay(1000);
+      }
+      if(inTheMiddleOfATurn == 1 && start_or_stop) {
         lastTurnTime = (millis() - stop_difference);
       }
     } else {
@@ -397,6 +424,7 @@ void calcLidar(void) {
     // for(int i = 0; i < n_samples; i++){
         // ---------  THIS IS FOR THE FRONT LIDAR  -------------
         byWindows = digitalRead(safe_to_turn_pin); // check in with the PI to see if we are in a turning bin
+
         digitalWrite(back_LDR_pin,LOW);
         digitalWrite(front_LDR_pin,HIGH);
         delay(5);
@@ -521,12 +549,7 @@ void calcLidar(void) {
       Serial.println("DELTA: " + String(deltaD));
     }
 
-  // LEDCHANGE
-  if(lookToRight){
-    digitalWrite(led_pin, HIGH);
-  } else {
-    digitalWrite(led_pin, LOW);
-  }
+
   // Print serial deltaD here 
     // }
 }
