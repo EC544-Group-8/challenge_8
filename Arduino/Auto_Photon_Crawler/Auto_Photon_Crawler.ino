@@ -11,8 +11,9 @@
 #include <NewPing.h>
 
 //================================================
-//                     Globals
+//                     Globals/Constants
 //================================================ 
+// Constants
 #define MIN_FRONT_IR_VALUE 70 // 5ft original
 #define LIDAR_CALIBRATE_DIFFERENCE 0 //8
 #define DEBUG 0 // 1 for debug mode, 0 for no, debug will disable motor and ultrasonic blocking
@@ -26,22 +27,24 @@
 #define TRIGGER_PIN  12
 #define ECHO_PIN     11
 #define MAX_DISTANCE 200
+#define startup true        // used to ensure startup only happens once
+#define startupDelay 1000   // time to pause at each calibration step
+#define maxSpeedOffset 45   // maximum speed magnitude, in servo 'degrees'
+#define maxWheelOffset 85   // maximum wheel turn magnitude, in servo 'degrees'
+#define FULL_SPEED 70
+#define SLOW_SPEED 70
+#define ESC_DELAY 100
+#define STRAIGHT 90
 
+// Pins
 #define safe_to_turn_pin 5
 #define remote_start_stop_pin 6
 #define remote_look_right_pin 7
 #define led_pin 9
-
-bool startup = true;        // used to ensure startup only happens once
-int startupDelay = 1000;    // time to pause at each calibration step
-double maxSpeedOffset = 45; // maximum speed magnitude, in servo 'degrees'
-double maxWheelOffset = 85; // maximum wheel turn magnitude, in servo 'degrees'
-
-// Pins
-int left_led = 6;
-int right_led = 7;
-int back_LDR_pin = 4;
-int front_LDR_pin = 13;
+#define left_led 6
+#define right_led 7
+#define back_LDR_pin 4
+#define front_LDR_pin 13
 
 // Lidar Lite V1
 #define     LIDARLite_ADDRESS   0x62        // Default I2C Address of LIDAR-Lite.
@@ -49,16 +52,13 @@ int front_LDR_pin = 13;
 #define     MeasureValue        0x04        // Value to initiate ranging.
 #define     RegisterHighLowB    0x8f        // Register to get both High and Low bytes in 1 call.
 
+// Global Variables
 int lidar_dist_front = 0;
 int last_lidar_dist_front = 0;
 int lidar_dist_back = 0;
 int last_lidar_dist_back = 0;
 double deltaD = 0;
 unsigned long lastTurnTime = 0;
-
-// Motion ID for stop and start from node.js app
-int new_motion(String new_id); // Need forward declaration for use in "setup" loop (note, must take a string, return an int to work)
-String motion_id = "0";
 
 // Max FrontIR Sensor
 const int frontIRPin = A0; // used with the max frontIR sensor
@@ -70,12 +70,11 @@ int avgRange = 20;
 Servo wheels;
 Servo esc;
 int wheels_write_value = 80;
+int esc_write_value = FULL_SPEED;
 
 // PID variables
 double steeringOut = 0;
 double setPos = 0;
-// 2 0 0  (Saved values for different speeds)
-// 2 0 .04
 double sKp = 2.2, sKi = 0.0, sKd = .05;
 double posError;
 PID steeringPID(&deltaD, &steeringOut, &setPos,
@@ -83,20 +82,18 @@ PID steeringPID(&deltaD, &steeringOut, &setPos,
                 
 double distOfLeftWall;
 double driftOut;
-double driftSetPos = 100;   // upstairs
-// double driftSetPos = 70; // UAV LAB
+double driftSetPos = 120;   // 4th floor hallwy
+// double driftSetPos = 70; // UAV LAB hallway
 double driftRightSetPos = 40;
 double distOfRightWall;
 
-// 0.7 0 0      (Saved Values for different speeds)
-// 0.7 0 0.04
 double dKp = 0.7,dKi= 0.0,dKd = 0.04;
 PID driftPID(&distOfLeftWall, &driftOut, & driftSetPos,
               dKp,dKi,dKd,DIRECT);
-double dKpR = 2.0;
+              
+double dKpR = 3.0;
 PID driftRightPID(&distOfRightWall, &driftOut, & driftRightSetPos,
               dKpR,dKi,dKd,DIRECT);
-
 
 // IR Sensors
 SharpIR IR_Front(GP2Y0A02YK0F,A0);
@@ -123,8 +120,6 @@ int right = 0;
 //================================================
 void setup()
 {
-  // Motion change function needs to be declared so its accessible to node.js app (through Particle cloud) 
-
   // Enable Serial
   Serial.begin(9600);
   
@@ -133,8 +128,8 @@ void setup()
   pinMode(right_led, OUTPUT);
   
   // Wheels and Motor
-  wheels.attach(3);//------------------------------
-  esc.attach(2);//--------------------------
+  wheels.attach(3);
+  esc.attach(2);
   if(!DEBUG)
     calibrateESC();
 
@@ -167,7 +162,7 @@ void setup()
 }
 
 void changeLED(bool ledSignal) {
-      // LEDCHANGE
+  // LEDCHANGE (debugging LED)
   if(ledSignal){
     digitalWrite(led_pin, HIGH);
   } else {
@@ -180,6 +175,7 @@ void changeLED(bool ledSignal) {
 //================================================
 void loop()
 {
+  // Read signals from Pi
   start_or_stop = digitalRead(remote_start_stop_pin);
   Serial.print("READING START_STOP AS: ");
   Serial.println(start_or_stop);
@@ -188,27 +184,26 @@ void loop()
   Serial.print("READING LOOK RIGHT AS: ");
   Serial.println(lookRightSignal);
 
-
-  
   if(start_or_stop) {
     Serial.println("START START !!! START START");
   } else {
     Serial.println("STOP STOP !!! STOP STOP");
-  }
+  } // end if
+  
   if(start_or_stop) {
     calcFrontSonar();
     if(DISPLAY_FRONTIR_MSGS){
       Serial.print("FRONT READING: ");  
       Serial.println(inches);
-    }
-    while((inches > MIN_FRONT_IR_VALUE || DEBUG) && start_or_stop ) // && motion_id == "1"
-       {
+  } // end if
+    
+  while((inches > MIN_FRONT_IR_VALUE || DEBUG) && start_or_stop ) {
         start_or_stop = digitalRead(remote_start_stop_pin);
         calcFrontSonar();
         String dist = String(inches);
         if(DISPLAY_FRONTIR_MSGS){
           Serial.println("FRONT_IR: " + dist);
-        }
+        } // end if
 
         // Check the right wall
         calcRightIR();
@@ -221,74 +216,84 @@ void loop()
         lookRightSignal = digitalRead(remote_look_right_pin);
         changeLED(lookRightSignal);
 
-
         if(lookToRight == 1 || lookRightSignal == 1) {
           if(DISPLAY_RIGHTIR_MSGS){
             Serial.println("LOOKING RIGHT ");
-          }
+          } // end if
           driftRightPIDloop();
-          wheels_write_value = 90+driftOut; // The drift out value is opposite of left side
+          wheels_write_value = STRAIGHT + driftOut; // The drift out value is opposite of left side
         } else {
           driftPIDloop();
           steeringPIDloop();
-          wheels_write_value = 90+(steeringOut - driftOut)/2;
-
-        }
+          wheels_write_value = STRAIGHT + (int)((0.4 * (double)steeringOut - 0.6 * (double)driftOut));
+        } // end else
         
         if(DISPLAY_RIGHTIR_MSGS){
             Serial.println("wheels_write_value: " + String(wheels_write_value));
-        }
+        } // end if
 
         // Too close to right wall, with room on the left
         if(DISPLAY_RIGHTIR_MSGS){
           Serial.println("- Right wall: " + String(distOfRightWall) + " - Left wall: " + String(distOfLeftWall));
-        }
+        } // end if
+        
         if(distOfRightWall < 20 && distOfLeftWall > 20) {
           if(DISPLAY_RIGHTIR_MSGS){
             Serial.println("Running into right WALLLLLLLLL!!! ");
-          }
-        }
+          } // end if
+        } // end if
         
-        // Turning LEDs
-        if(wheels_write_value < 90){
+        // Turn Signal LEDs
+        if(wheels_write_value < STRAIGHT){
           digitalWrite(right_led, LOW);
           digitalWrite(left_led, HIGH);
-        }
-        else if (wheels_write_value > 90){
+        } // end if
+        else if (wheels_write_value > STRAIGHT){
           digitalWrite(left_led, LOW);
           digitalWrite(right_led, HIGH);
-        }
+        } else {
+          digitalWrite(left_led, LOW);
+          digitalWrite(right_led, LOW);
+        } // end else
+     
           
         wheels.write(wheels_write_value);
+        
         //avg outputs and write them to the servo
-        if(!DEBUG){
-          esc.write(70); // originally 60 as the prime value
-        }
+        if(!DEBUG && start_or_stop){
+          esc.write(esc_write_value); // originally 60 as the prime value
+        } // end if
+        
         if(DISPLAY_PIDS_MSGS){
           Serial.println("Steeringout: " + String(steeringOut));
           Serial.println("Driftout: " + String(driftOut));
-        }
+        } // end if
 
         if (DEBUG) {
           delay(1000);
-        }
-    }
-    
-    delay(100);
+        } // end if
+    } // end while
+
+    // Delay for switching ESC
     esc.write(90); 
+    delay(ESC_DELAY);
+    
     unsigned long stop_difference;
     if(inTheMiddleOfATurn == 1) {
       stop_difference = (millis() - lastTurnTime);
-    }
+    } // end if
+    
     if(start_or_stop) {
       wheels.write(85);
       Serial.println("stopping motors");
       delay(500);
       Serial.println("backing up");
+      
       if(start_or_stop) {
         esc.write(105);
         delay(2000);
-      }
+      } // end if
+      
       Serial.println("return to previous state...");
       if(start_or_stop) {
         if(!lookRightSignal)
@@ -296,42 +301,36 @@ void loop()
         else
           wheels.write(45);
           
-        esc.write(70);
+        esc.write(esc_write_value);
         delay(1000);
-      }
+      } // end if
+      
       if(inTheMiddleOfATurn == 1 && start_or_stop) {
         lastTurnTime = (millis() - stop_difference);
-      }
+      } // end if
+      
     } else {
       // Do nothing
-    }
-  }
-}
+    } // end else
+  } // end if(start_or_stop)
+} // end while
 
 //================================================
 //                  Functions
 //================================================
-int new_motion(String new_id) {
-  motion_id = new_id;
-  return 1;
-}
-
 void steeringPIDloop(void) {
   steeringPID.SetTunings(sKp,sKi,sKd);
   steeringPID.Compute();
-  //wheels.write(90+steeringOut);
 }
 
 void driftPIDloop(void) {
   driftPID.SetTunings(dKp,dKi,dKd);
   driftPID.Compute();
-  //wheels.write(90+steeringOut); 
 }
 
 void driftRightPIDloop(void) {
   driftRightPID.SetTunings(dKp,dKi,dKd);
   driftRightPID.Compute();
-  //wheels.write(90+steeringOut); 
 }
 
 // Convert degree value to radians 
@@ -351,6 +350,8 @@ void canITurn(double delta){
   Serial.println(delta);
   Serial.print("SAFE TO TURN IS: ");
   Serial.println(safeToTurn);
+
+  bool hasDelayed = false;
   // If not in the middle of a turn
   if(inTheMiddleOfATurn == 0) {
     // If we see a big gap, and it is safe to rutn
@@ -358,15 +359,34 @@ void canITurn(double delta){
       if(first_delta < 2) {
         Serial.println("1st DELTA!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
         first_delta += 1; // this is our first big delta
+        // Slow down to check for more deltas
+        esc_write_value = SLOW_SPEED;
+        esc.write(SLOW_SPEED);
+        if( 0 &&  !hasDelayed) { // hardcoded to 0 right now
+          hasDelayed = true;
+          delay(1000);
+        }
+        //delay(ESC_DELAY);
       } else  {
         Serial.println("1st DELTA AND GAP LEFT !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! STARTING TURN");
+        // Speed back up for turn
+        esc_write_value = FULL_SPEED;
+        esc.write(FULL_SPEED);
+
+        //delay(ESC_DELAY);
+
         lastTurnTime = millis();
         // start the turn
         inTheMiddleOfATurn = 1;
         first_delta = 0; // reset
+        hasDelayed = false;
       } 
     } else {
-      first_delta = 0; // reset
+         first_delta = 0; // reset
+         esc_write_value = FULL_SPEED;
+         esc.write(FULL_SPEED);
+         hasDelayed = false;
+        //delay(ESC_DELAY);
     }
   }
 
@@ -374,8 +394,8 @@ void canITurn(double delta){
   if(inTheMiddleOfATurn == 1) {
     Serial.print("time since last turn: ");
     Serial.println((millis() - lastTurnTime));
-    // If it has been more than 5 seconds since our last turn, don't make turns for the next 15 seconds
     if( (millis() - lastTurnTime > 2500) && safeToTurn == 1) {
+      // If it has been more than 5 seconds since our last turn, don't make turns for the next 15 seconds
       Serial.println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! SHUTTING DOWN SAFE TO TURN FOR 15 SEC");
       safeToTurn = 0;
   
@@ -428,25 +448,25 @@ void calcLidar(void) {
         digitalWrite(back_LDR_pin,LOW);
         digitalWrite(front_LDR_pin,HIGH);
         delay(5);
-        Wire.beginTransmission((int)LIDARLite_ADDRESS); // transmit to LIDAR-Lite
-        Wire.write((int)RegisterMeasure); // sets register pointer to  (0x00)  
-        Wire.write((int)MeasureValue); // sets register pointer to  (0x00)  
-        Wire.endTransmission(); // stop transmitting
+        Wire.beginTransmission((int)LIDARLite_ADDRESS);     // transmit to LIDAR-Lite
+        Wire.write((int)RegisterMeasure);                   // sets register pointer to  (0x00)  
+        Wire.write((int)MeasureValue);                      // sets register pointer to  (0x00)  
+        Wire.endTransmission();                             // stop transmitting
     
-        delay(TRANSMIT_DELAY); // Wait 20ms for transmit
+        delay(TRANSMIT_DELAY);                              // Wait 20ms for transmit
     
-        Wire.beginTransmission((int)LIDARLite_ADDRESS); // transmit to LIDAR-Lite
-        Wire.write((int)RegisterHighLowB); // sets register pointer to (0x8f)
-        Wire.endTransmission(); // stop transmitting
+        Wire.beginTransmission((int)LIDARLite_ADDRESS);     // transmit to LIDAR-Lite
+        Wire.write((int)RegisterHighLowB);                  // sets register pointer to (0x8f)
+        Wire.endTransmission();                             // stop transmitting
     
-        delay(TRANSMIT_DELAY); // Wait 20ms for transmit
+        delay(TRANSMIT_DELAY);                              // Wait 20ms for transmit
     
-        Wire.requestFrom((int)LIDARLite_ADDRESS, 2); // request 2 bytes from LIDAR-Lite
+        Wire.requestFrom((int)LIDARLite_ADDRESS, 2);        // request 2 bytes from LIDAR-Lite
     
-        if(2 <= Wire.available()) { // if two bytes were received
-            lidar_dist_front = Wire.read(); // receive high byte (overwrites previous reading)
-            lidar_dist_front = lidar_dist_front << 8; // shift high byte to be high 8 bits
-            lidar_dist_front |= Wire.read(); // receive low byte as lower 8 bits
+        if(2 <= Wire.available()) {                         // if two bytes were received
+            lidar_dist_front = Wire.read();                 // receive high byte (overwrites previous reading)
+            lidar_dist_front = lidar_dist_front << 8;       // shift high byte to be high 8 bits
+            lidar_dist_front |= Wire.read();                // receive low byte as lower 8 bits
             lidar_dist_front += LIDAR_CALIBRATE_DIFFERENCE;
             
             // handle noise in lidar
@@ -463,8 +483,9 @@ void calcLidar(void) {
               gapToLeft = 0;
             }
             
-            // Look to right sensor if there is a gap to left and we are not at turning point (gap)
             if(!byWindows && !safeToTurn) {
+              // Look to right sensor if there is a gap to left and we are not at turning point (gap)
+
               if(DISPLAY_RIGHTIR_MSGS){
                 Serial.println("LOOK TO RIGHT - FRONT");
               }
@@ -472,16 +493,13 @@ void calcLidar(void) {
               Serial.println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! LOOKING TO THE RIGHT");
               Serial.print("RIGHT IR VALUE: ");
               Serial.println(distOfRightWall);
-//              lidar_dist_front = last_lidar_dist_front;
             } else {
               lookToRight = 0;
             } 
             
             last_lidar_dist_front = lidar_dist_front;
-            // lidar_dist_front_avg += lidar_dist_front;
-            String debug1 = "FRONT LIDAR... ";
             if(DISPLAY_PIDS_MSGS){
-              Serial.print(debug1);
+              Serial.print("FRONT LIDAR... ");
               Serial.println(lidar_dist_front);
             }
             
@@ -493,82 +511,55 @@ void calcLidar(void) {
         digitalWrite(front_LDR_pin,LOW);
         delay(5);
         Wire.beginTransmission((int)LIDARLite_ADDRESS); // transmit to LIDAR-Lite
-        Wire.write((int)RegisterMeasure); // sets register pointer to  (0x00)  
-        Wire.write((int)MeasureValue); // sets register pointer to  (0x00)  
-        Wire.endTransmission(); // stop transmitting
+        Wire.write((int)RegisterMeasure);               // sets register pointer to  (0x00)  
+        Wire.write((int)MeasureValue);                  // sets register pointer to  (0x00)  
+        Wire.endTransmission();                         // stop transmitting
     
-        delay(TRANSMIT_DELAY); // Wait 20ms for transmit
+        delay(TRANSMIT_DELAY);                          // Wait 20ms for transmit
     
         Wire.beginTransmission((int)LIDARLite_ADDRESS); // transmit to LIDAR-Lite
-        Wire.write((int)RegisterHighLowB); // sets register pointer to (0x8f)
-        Wire.endTransmission(); // stop transmitting
+        Wire.write((int)RegisterHighLowB);              // sets register pointer to (0x8f)
+        Wire.endTransmission();                         // stop transmitting
     
-        delay(TRANSMIT_DELAY); // Wait 20ms for transmit
-    
+        delay(TRANSMIT_DELAY);                          // Wait 20ms for transmit
+      
         Wire.requestFrom((int)LIDARLite_ADDRESS, 2); // request 2 bytes from LIDAR-Lite
     
-        if(2 <= Wire.available()) {// if two bytes were received
-            lidar_dist_back = Wire.read(); // receive high byte (overwrites previous reading)
+        if(2 <= Wire.available()) {                 // if two bytes were received
+            lidar_dist_back = Wire.read();          // receive high byte (overwrites previous reading)
             lidar_dist_back = lidar_dist_back << 8; // shift high byte to be high 8 bits
-            lidar_dist_back |= Wire.read(); // receive low byte as lower 8 bits
+            lidar_dist_back |= Wire.read();         // receive low byte as lower 8 bits
 
             // handle noise in lidar
             if(lidar_dist_back < 10 || lidar_dist_back > 1500) {
               lidar_dist_back = last_lidar_dist_back;
-            }
+            } // end if
 
             if(lookToRight == 1 && abs(lidar_dist_front - lidar_dist_back) < 75 && (lidar_dist_front < 150 && lidar_dist_back < 150)){
-              Serial.println("SAFE TO USE LEFT AFTER ALL~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
+              // If left wall is in range and both sensors agree, use it
+              Serial.println("SAFE TO USE LEFT WALL AFTER ALL~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
               lookToRight = 0;
-            }
+            } // end if
             
             last_lidar_dist_back = lidar_dist_back;
-            // lidar_dist_back_avg += lidar_dist_back;
-            String debug2 = "BACK LIDAR... ";
             if(DISPLAY_PIDS_MSGS){
-              Serial.print(debug2);
+              Serial.print("BACK LIDAR... ");
               Serial.println(lidar_dist_back);
-            }
-            //delay(1000);
-            // Particle.publish("DEBUG",String(lidar_dist_back));
-        }
-    // lidar_dist_back = lidar_dist_back_avg / n_samples;
-    // lidar_dist_front = lidar_dist_front_avg / n_samples;
+            } // end if
+        } // end if
     // ---------  END BACK LIDAR  -------------
   
-  // Calculate deltaD
+  // Calculate deltaD: (deltaD==0 means going straight)
   deltaD = lidar_dist_back - lidar_dist_front;
+  
   if(deltaD > 0) {
+    // Use the closer lidar to determine dist from wall
       distOfLeftWall = lidar_dist_front;
   } else {
       distOfLeftWall = lidar_dist_back;
   }
-//   deltaD -= LIDAR_CALIBRATE_DIFFERENCE;
-  //distOfLeftWall = (lidar_dist_back + lidar_dist_front)/2;
+  
     if(DISPLAY_PIDS_MSGS){
       Serial.println("DELTA: " + String(deltaD));
     }
-
-
-  // Print serial deltaD here 
-    // }
 }
-
-//================================================
-//                  Sytem Notes
-//================================================
-/*
-    configuration:  Default 0.
-      0: Default mode, balanced performance.
-      1: Short range, high speed. Uses 0x1d maximum acquisition count.
-      2: Default range, higher speed short range. Turns on quick termination
-          detection for faster measurements at short range (with decreased
-          accuracy)
-      3: Maximum range. Uses 0xff maximum acquisition count.
-      4: High sensitivity detection. Overrides default valid measurement detection
-          algorithm, and uses a threshold value for high sensitivity and noise.
-      5: Low sensitivity detection. Overrides default valid measurement detection
-          algorithm, and uses a threshold value for low sensitivity and noise.
-    lidarliteAddress: Default 0x62. Fill in new address here if changed. See
-      operating manual for instructions.
-*/
