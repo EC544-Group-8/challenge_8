@@ -22,19 +22,24 @@ var sp = new SerialPort.SerialPort(portName, portConfig);//*********************
 // raspberry PI GPIO Pins
 var start_stop_pin_number = 23;
 var safe_to_turn_pin_number = 17;
+var look_right_pin_number = 18;
 
 var Gpio = require('onoff').Gpio,
   start_stop_pin = new Gpio(start_stop_pin_number, 'out'),
-  safe_to_turn_pin = new Gpio(safe_to_turn_pin_number, 'out');
+  safe_to_turn_pin = new Gpio(safe_to_turn_pin_number, 'out'),
+  look_right_pin = new Gpio(look_right_pin_number, 'out');
+
  
 // Make sure the led is turned off to start
 start_stop_pin.writeSync(0);
 safe_to_turn_pin.writeSync(0);
+look_right_pin.writeSync(0);
 
 // Unexport GPIO and free resources on ctrl+c
 process.on('SIGINT', function () {
- // start_stop_pin.unexport();
- // safe_to_turn_pin.unexport();
+ start_stop_pin.unexport();
+ safe_to_turn_pin.unexport();
+ look_right_pin.unexport();
 });
 
 // // functions
@@ -46,6 +51,11 @@ function updateSafeTurn(status) {
 function updateStartStop(status) {
   start_stop_pin.writeSync(status);
   console.log('Stop start Status set to: ' + String(status));
+}
+
+function updateLookRight(status) {
+  look_right_pin.writeSync(status);
+  console.log('Left/Right Status set to: ' + String(status));
 }
 
 
@@ -196,14 +206,16 @@ app.get('/start_stop_crawler', function(req, res){
 
 });
 
-// For going left
+// For looking left
 app.get('/turn_left', function(req, res){
+	updateLookRight(0);
 	res.send("1");
 
 });
 
-// For going right
+// For looking right
 app.get('/turn_right', function(req, res){
+	updateLookRight(1);
 	res.send("1");
 });
 
