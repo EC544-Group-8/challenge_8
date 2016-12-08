@@ -16,8 +16,8 @@ portConfig = {
     parser: XBeeAPI.rawParser()
 
 };
-
-var sp = new SerialPort.SerialPort(portName, portConfig);//*****************************************************
+ 
+ var sp = new SerialPort.SerialPort(portName, portConfig);//*****************************************************
 
 // raspberry PI GPIO Pins
 var start_stop_pin_number = 23;
@@ -42,7 +42,7 @@ process.on('SIGINT', function () {
  look_right_pin.unexport();
 });
 
-// // functions
+// functions
 function updateSafeTurn(status) {
   safe_to_turn_pin.writeSync(status);
   console.log('Safe to turn Status set to: ' + String(status));
@@ -58,7 +58,6 @@ function updateLookRight(status) {
   console.log('Left/Right Status set to: ' + String(status));
 }
 
-
 app.use(express.static(__dirname + '/public'));
 
 app.get('/', function(req, res){
@@ -73,7 +72,7 @@ http.listen(3000, function(){
 
 // ------------ BEGIN - SEND RSSI REQUEST FROM COORDINATOR ------------ //
 
-//Create a packet to be sent to all other XBEE units on the PAN to request RSSI packets back to coordinator.
+// Create a packet to be sent to all other XBEE units on the PAN to request RSSI packets back to coordinator.
 // The value of 'data' is meaningless, for now.
 var RSSIRequestPacket = {
   type: C.FRAME_TYPE.ZIGBEE_TRANSMIT_REQUEST,
@@ -113,7 +112,7 @@ fs.createReadStream('DB_AVG.txt')
     });
 
 
-// predict the nth neighbors
+// // predict the nth neighbors
 function predict(sample) {
     var delta = {};
     var nbr = -1;
@@ -199,7 +198,7 @@ app.get('/get_location', function(req, res){
 	res.send(position);
 });
 
-// For starting/stopping
+
 app.get('/start_stop_crawler', function(req, res){
   updateStartStop(start_stop_pin.readSync() === 0 ? 1 : 0);
 	res.send("1");
