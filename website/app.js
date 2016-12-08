@@ -87,7 +87,7 @@ var requestRSSI = function(){
 };
 
 
-// var sampleDelay = 2500;
+var sampleDelay = 2500;
 // Every "sampleDelay" seconds, gather new RSSI values********************************************************
 sp.on("open", function () {
   console.log('open');
@@ -198,7 +198,7 @@ app.get('/get_location', function(req, res){
 	res.send(position);
 });
 
-For starting/stopping
+
 app.get('/start_stop_crawler', function(req, res){
   updateStartStop(start_stop_pin.readSync() === 0 ? 1 : 0);
 	res.send("1");
