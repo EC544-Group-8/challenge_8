@@ -20,12 +20,28 @@
 		  <!--<iframe width="640" style="float:left" height="480" frameBorder="0"  src="http://ec544group8.hopto.org:54321"></iframe> -->
 		  <iframe width="640" style="float:left" height="480" frameBorder="0"  src="http://192.168.1.110:8081"></iframe>
 	  </div>
-	  <button id="start_stop" class="btn btn-start-stop">Start/Stop</button>
-	  <button style="align:bottom, float:bottom" id="left" class="btn btn-left">Left</button>
-	  <button style="align:bottom, float:bottom" id="right" class="btn btn-right">Right</button>
-    </main>
+	  <button id="start_stop" class="btn btn-start-stop"><input type = "image" src = "../images/red_pwr.png" id = "start_stop_image" width = "60" height = "60"></button>
+	  <button style="align:bottom, float:bottom" id="left" class="btn btn-left"><input type = "image" src = "../images/left_arrow.png" id = "left_image" width = "60" height = "60"></button>
+	  <button style="align:bottom, float:bottom" id="right" class="btn btn-right"><input type = "image" src = "../images/right_arrow.png" id = "right_image" width = "60" height = "60"></button>
     <script src="http://code.jquery.com/jquery-1.11.1.js"></script>  
     <!--script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script-->  
     <script src="/javascripts/main.js"></script>
+    <script type="text/javascript">
+      var toggle = $("#start_stop");
+      var image = $("#start_stop_image");
+      var toggle_int = 0;
+
+      toggle.click(function(){
+        if(toggle_int) {
+          image.attr('src', 'images/red_pwr.png');
+          toggle_int = 0;
+        } else {
+          image.attr('src', 'images/green_pwr.png');
+          toggle_int = 1;
+        }
+        
+
+      })
+    </script>
   </body>
 </html>
